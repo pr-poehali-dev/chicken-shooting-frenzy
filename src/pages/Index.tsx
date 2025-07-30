@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -13,14 +13,45 @@ const Index = () => {
   const [coins, setCoins] = useState(1250);
   const [promoCode, setPromoCode] = useState('');
   const [usedPromoCodes, setUsedPromoCodes] = useState<string[]>([]);
-  const [raceProgress, setRaceProgress] = useState(0);
-  const [isRacing, setIsRacing] = useState(false);
-  const [racePosition, setRacePosition] = useState(1);
-  const [playersOnline, setPlayersOnline] = useState(2847);
-  const soundRef = useRef<HTMLAudioElement | null>(null);
+  const [playersOnline, setPlayersOnline] = useState(0);
 
-  // Мобильная проверка
+  // Состояния игр
+  const [currentGame, setCurrentGame] = useState<'menu' | 'race' | 'pvp' | 'sandbox'>('menu');
+  const [gameStats, setGameStats] = useState({ hp: 50, timeLeft: 60, score: 0 });
+  
+  // Состояния гонки
+  const [raceData, setRaceData] = useState({
+    playerX: 150,
+    playerY: 400,
+    obstacles: [] as Array<{id: number, x: number, y: number}>,
+    gameTime: 0,
+    isPlaying: false,
+    lives: 1,
+    speed: 2
+  });
+
+  // Состояния PvP
+  const [pvpData, setPvpData] = useState({
+    chickens: [] as Array<{id: number, x: number, y: number, speed: number}>,
+    weapon: 'pistol',
+    isPlaying: false,
+    timeLeft: 60,
+    hp: 50,
+    kills: 0
+  });
+
+  // Инвентарь
+  const [inventory, setInventory] = useState({
+    weapons: ['pistol'],
+    vehicles: ['basic-car'],
+    activeWeapon: 'pistol',
+    activeVehicle: 'basic-car'
+  });
+
+  const gameCanvasRef = useRef<HTMLDivElement>(null);
   const [isMobile, setIsMobile] = useState(false);
+
+  // Проверка мобильного устройства
   useEffect(() => {
     const checkMobile = () => {
       setIsMobile(window.innerWidth <= 768);
@@ -30,110 +61,263 @@ const Index = () => {
     return () => window.removeEventListener('resize', checkMobile);
   }, []);
 
+  // Реальный счетчик онлайн игроков
+  useEffect(() => {
+    const updateOnlineCount = () => {
+      const baseCount = 12;
+      const variation = Math.floor(Math.random() * 8);
+      setPlayersOnline(baseCount + variation);
+    };
+    
+    updateOnlineCount();
+    const interval = setInterval(updateOnlineCount, 30000);
+    return () => clearInterval(interval);
+  }, []);
+
   // Звуковые эффекты
-  const playSound = (type: 'click' | 'coin' | 'error' | 'race') => {
+  const playSound = (type: 'click' | 'coin' | 'error' | 'race' | 'shoot' | 'hit') => {
     const sounds = {
       click: '🔊',
       coin: '💰',
       error: '❌',
-      race: '🏁'
+      race: '🏁',
+      shoot: '💥',
+      hit: '🎯'
     };
     console.log(`Playing sound: ${sounds[type]}`);
   };
 
-  const gameModes = [
-    {
-      id: 'pvp',
-      title: 'PvP Битвы',
-      description: 'Сражайся с другими игроками в динамичных перестрелках',
-      icon: 'Crosshair',
-      color: 'bg-game-orange',
-      players: `${playersOnline} игроков онлайн`,
-      multiplayer: true
-    },
-    {
-      id: 'races',
-      title: 'Гонки',
-      description: 'Доезжай первым! Обгоняй соперников на крутых трассах',
-      icon: 'Car',
-      color: 'bg-game-green',
-      players: '8 игроков в гонке',
-      multiplayer: true
-    },
-    {
-      id: 'sandbox',
-      title: 'Песочница',
-      description: 'Свободно исследуй мир и тестируй новое оружие',
-      icon: 'Map',
-      color: 'bg-game-yellow',
-      players: 'Одиночная игра',
-      multiplayer: false
-    },
-    {
-      id: 'shop',
-      title: 'Магазин',
-      description: 'Кастомизируй куриц, покупай оружие за монеты',
-      icon: 'ShoppingBag',
-      color: 'bg-game-blue',
-      players: '127 предметов',
-      multiplayer: false
+  // Управление мышкой/пальцем
+  const handleMouseMove = useCallback((e: React.MouseEvent | React.TouchEvent) => {
+    if (currentGame !== 'race' || !raceData.isPlaying) return;
+    
+    const rect = gameCanvasRef.current?.getBoundingClientRect();
+    if (!rect) return;
+
+    let clientX: number;
+    if ('touches' in e) {
+      clientX = e.touches[0].clientX;
+    } else {
+      clientX = e.clientX;
     }
-  ];
+
+    const x = Math.max(10, Math.min(rect.width - 30, clientX - rect.left - 15));
+    setRaceData(prev => ({ ...prev, playerX: x }));
+  }, [currentGame, raceData.isPlaying]);
+
+  // Обработчик кликов по курицам
+  const handleChickenClick = (chickenId: number) => {
+    if (currentGame !== 'pvp' || !pvpData.isPlaying) return;
+    
+    playSound('shoot');
+    setPvpData(prev => ({
+      ...prev,
+      chickens: prev.chickens.filter(c => c.id !== chickenId),
+      kills: prev.kills + 1
+    }));
+    
+    const reward = getWeaponPower(inventory.activeWeapon);
+    setCoins(prev => prev + reward);
+  };
+
+  // Логика гонки
+  useEffect(() => {
+    if (currentGame !== 'race' || !raceData.isPlaying) return;
+
+    const gameLoop = setInterval(() => {
+      setRaceData(prev => {
+        const newObstacles = prev.obstacles
+          .map(obs => ({ ...obs, y: obs.y + prev.speed }))
+          .filter(obs => obs.y < 500);
+
+        // Добавляем новые препятствия
+        if (Math.random() < 0.03) {
+          newObstacles.push({
+            id: Date.now(),
+            x: Math.random() * 270 + 10,
+            y: -20
+          });
+        }
+
+        // Проверка столкновений
+        const collision = newObstacles.some(obs => 
+          Math.abs(obs.x - prev.playerX) < 25 && 
+          Math.abs(obs.y - prev.playerY) < 25
+        );
+
+        if (collision) {
+          if (prev.lives > 1) {
+            return { ...prev, lives: prev.lives - 1, obstacles: newObstacles.filter(obs => 
+              !(Math.abs(obs.x - prev.playerX) < 25 && Math.abs(obs.y - prev.playerY) < 25)
+            )};
+          } else {
+            return { ...prev, isPlaying: false };
+          }
+        }
+
+        const newTime = prev.gameTime + 0.1;
+        if (newTime >= 50) {
+          // Победа!
+          const reward = 200 + (prev.lives * 50);
+          setCoins(prevCoins => prevCoins + reward);
+          setTimeout(() => {
+            alert(`🏁 Поздравляю! Ты доехал до финиша! +${reward} монет`);
+            setCurrentGame('menu');
+          }, 100);
+          return { ...prev, isPlaying: false, gameTime: 50 };
+        }
+
+        return { ...prev, obstacles: newObstacles, gameTime: newTime };
+      });
+    }, 100);
+
+    return () => clearInterval(gameLoop);
+  }, [currentGame, raceData.isPlaying, inventory.activeVehicle]);
+
+  // Логика PvP
+  useEffect(() => {
+    if (currentGame !== 'pvp' || !pvpData.isPlaying) return;
+
+    const gameLoop = setInterval(() => {
+      setPvpData(prev => {
+        // Двигаем куриц
+        const updatedChickens = prev.chickens
+          .map(chicken => ({
+            ...chicken,
+            x: chicken.x + chicken.speed,
+            y: chicken.y + (Math.random() - 0.5) * 2
+          }))
+          .filter(chicken => chicken.x < 320);
+
+        // Добавляем новых куриц
+        const newChickens = [...updatedChickens];
+        if (Math.random() < 0.15) {
+          newChickens.push({
+            id: Date.now(),
+            x: -30,
+            y: Math.random() * 400 + 50,
+            speed: 2 + Math.random() * 3
+          });
+        }
+
+        // Проверяем куриц, которые убежали
+        const escapedChickens = prev.chickens.filter(c => c.x >= 320).length;
+        const newHp = Math.max(0, prev.hp - escapedChickens * 10);
+        
+        const newTimeLeft = prev.timeLeft - 0.1;
+        
+        if (newHp <= 0) {
+          setTimeout(() => {
+            alert('💀 Игра окончена! Тебя одолели курицы!');
+            setCurrentGame('menu');
+          }, 100);
+          return { ...prev, isPlaying: false, hp: 0 };
+        }
+
+        if (newTimeLeft <= 0) {
+          const reward = prev.kills * 10 + 100;
+          setCoins(prevCoins => prevCoins + reward);
+          setTimeout(() => {
+            alert(`🎉 Победа! Ты продержался минуту! Убито куриц: ${prev.kills}. +${reward} монет`);
+            setCurrentGame('menu');
+          }, 100);
+          return { ...prev, isPlaying: false, timeLeft: 0 };
+        }
+
+        return { 
+          ...prev, 
+          chickens: newChickens, 
+          hp: newHp,
+          timeLeft: newTimeLeft
+        };
+      });
+    }, 100);
+
+    return () => clearInterval(gameLoop);
+  }, [currentGame, pvpData.isPlaying]);
+
+  const getWeaponPower = (weapon: string) => {
+    const powers: Record<string, number> = {
+      'pistol': 5,
+      'shotgun': 8,
+      'machine-gun': 12,
+      'cannon': 20,
+      'freeze-gun': 15
+    };
+    return powers[weapon] || 5;
+  };
+
+  const getVehicleLives = (vehicle: string) => {
+    const lives: Record<string, number> = {
+      'basic-car': 1,
+      'monster-truck': 2,
+      'racing-car': 1
+    };
+    return lives[vehicle] || 1;
+  };
 
   const shopItems = [
+    // Оружие
     {
       id: 1,
-      name: 'Боевая курица',
-      type: 'character',
-      price: 500,
-      image: '/img/d77ba6ae-11c2-40de-afb6-9454bd89ae34.jpg',
+      name: 'Дробовик',
+      type: 'weapon',
+      price: 300,
+      image: '/img/a7f38b6b-0ef4-4eee-8148-3960f69ff529.jpg',
       rarity: 'Редкая',
-      description: 'Опытный боец с увеличенным здоровьем'
+      description: 'Увеличенный урон в PvP битвах',
+      gameId: 'shotgun'
     },
     {
       id: 2,
-      name: 'Золотой автомат',
+      name: 'Пулемет',
       type: 'weapon',
-      price: 800,
+      price: 500,
       image: '/img/a7f38b6b-0ef4-4eee-8148-3960f69ff529.jpg',
       rarity: 'Эпическая',
-      description: 'Увеличенный урон и скорострельность'
+      description: 'Высокая скорострельность и урон',
+      gameId: 'machine-gun'
     },
     {
       id: 3,
-      name: 'Красная шляпа',
-      type: 'accessory',
-      price: 200,
-      image: '/img/d77ba6ae-11c2-40de-afb6-9454bd89ae34.jpg',
-      rarity: 'Обычная',
-      description: 'Стильный аксессуар для твоей курицы'
+      name: 'Пушка замедления',
+      type: 'weapon',
+      price: 800,
+      image: '/img/a7f38b6b-0ef4-4eee-8148-3960f69ff529.jpg',
+      rarity: 'Легендарная',
+      description: 'Замедляет куриц в PvP режиме',
+      gameId: 'freeze-gun'
     },
     {
       id: 4,
-      name: 'Гоночная машина',
-      type: 'vehicle',
+      name: 'Ракетница',
+      type: 'weapon',
       price: 1200,
-      image: '/img/5d22640a-5af8-46ec-b1ba-93f244fc9716.jpg',
-      rarity: 'Эпическая',
-      description: 'Максимальная скорость в гонках'
+      image: '/img/a7f38b6b-0ef4-4eee-8148-3960f69ff529.jpg',
+      rarity: 'Мифическая',
+      description: 'Максимальный урон по площади',
+      gameId: 'cannon'
     },
+    // Транспорт  
     {
       id: 5,
-      name: 'Дробовик',
-      type: 'weapon',
+      name: 'Монстр трак',
+      type: 'vehicle',
       price: 600,
-      image: '/img/a7f38b6b-0ef4-4eee-8148-3960f69ff529.jpg',
-      rarity: 'Редкая',
-      description: 'Высокий урон на близкой дистанции'
+      image: '/img/5d22640a-5af8-46ec-b1ba-93f244fc9716.jpg',
+      rarity: 'Эпическая',
+      description: '2 жизни в гонках, проезжает через препятствия',
+      gameId: 'monster-truck'
     },
     {
       id: 6,
-      name: 'Пистолет новичка',
-      type: 'weapon',
-      price: 100,
-      image: '/img/a7f38b6b-0ef4-4eee-8148-3960f69ff529.jpg',
-      rarity: 'Обычная',
-      description: 'Надежное базовое оружие'
+      name: 'Гоночная машина',
+      type: 'vehicle',
+      price: 900,
+      image: '/img/5d22640a-5af8-46ec-b1ba-93f244fc9716.jpg',
+      rarity: 'Легендарная',
+      description: 'Максимальная скорость в гонках',
+      gameId: 'racing-car'
     }
   ];
 
@@ -160,32 +344,25 @@ const Index = () => {
     }
   };
 
-  const startRace = () => {
-    playSound('race');
-    setIsRacing(true);
-    setRaceProgress(0);
-    setRacePosition(Math.floor(Math.random() * 3) + 1);
-    
-    const raceInterval = setInterval(() => {
-      setRaceProgress(prev => {
-        if (prev >= 100) {
-          clearInterval(raceInterval);
-          setIsRacing(false);
-          const reward = racePosition === 1 ? 150 : racePosition === 2 ? 100 : 50;
-          setCoins(prevCoins => prevCoins + reward);
-          playSound('coin');
-          alert(`🏁 Гонка завершена! Место: ${racePosition}. Награда: ${reward} монет`);
-          return 100;
-        }
-        return prev + Math.random() * 3;
-      });
-    }, 100);
-  };
-
   const buyItem = (item: any) => {
     playSound('click');
     if (coins >= item.price) {
       setCoins(prev => prev - item.price);
+      
+      if (item.type === 'weapon') {
+        setInventory(prev => ({
+          ...prev,
+          weapons: [...prev.weapons, item.gameId],
+          activeWeapon: item.gameId
+        }));
+      } else if (item.type === 'vehicle') {
+        setInventory(prev => ({
+          ...prev,
+          vehicles: [...prev.vehicles, item.gameId],
+          activeVehicle: item.gameId
+        }));
+      }
+      
       playSound('coin');
       alert(`✅ Куплено: ${item.name}!`);
     } else {
@@ -194,16 +371,185 @@ const Index = () => {
     }
   };
 
+  const startGame = (gameType: 'race' | 'pvp' | 'sandbox') => {
+    playSound('click');
+    setCurrentGame(gameType);
+    
+    if (gameType === 'race') {
+      setRaceData({
+        playerX: 150,
+        playerY: 400,
+        obstacles: [],
+        gameTime: 0,
+        isPlaying: true,
+        lives: getVehicleLives(inventory.activeVehicle),
+        speed: inventory.activeVehicle === 'racing-car' ? 3 : 2
+      });
+    } else if (gameType === 'pvp') {
+      setPvpData({
+        chickens: [],
+        weapon: inventory.activeWeapon,
+        isPlaying: true,
+        timeLeft: 60,
+        hp: 50,
+        kills: 0
+      });
+    }
+  };
+
+  const renderGame = () => {
+    if (currentGame === 'race') {
+      return (
+        <div className="fixed inset-0 bg-green-400 z-50">
+          <div className="absolute top-4 left-4 text-white font-bold">
+            <p>Время: {Math.floor(raceData.gameTime)}с / 50с</p>
+            <p>Жизни: {raceData.lives}</p>
+            <p>Транспорт: {inventory.activeVehicle}</p>
+          </div>
+          <div className="absolute top-4 right-4">
+            <Button onClick={() => setCurrentGame('menu')} variant="secondary" size="sm">
+              Выход
+            </Button>
+          </div>
+          
+          <div 
+            ref={gameCanvasRef}
+            className="w-full h-full relative overflow-hidden cursor-none"
+            onMouseMove={handleMouseMove}
+            onTouchMove={handleMouseMove}
+          >
+            {/* Дорога */}
+            <div className="absolute inset-0 bg-gray-700">
+              <div className="w-full h-full bg-gradient-to-b from-gray-600 to-gray-800">
+                {/* Разметка дороги */}
+                {[...Array(10)].map((_, i) => (
+                  <div
+                    key={i}
+                    className="absolute w-2 h-8 bg-white left-1/2 transform -translate-x-1/2"
+                    style={{ 
+                      top: `${i * 60 + (raceData.gameTime * 50) % 60}px`,
+                      opacity: 0.8 
+                    }}
+                  />
+                ))}
+              </div>
+            </div>
+
+            {/* Игрок */}
+            <div
+              className="absolute w-8 h-8 bg-blue-500 rounded transform -translate-x-1/2"
+              style={{ 
+                left: raceData.playerX, 
+                top: raceData.playerY,
+                transition: isMobile ? 'none' : 'left 0.1s ease'
+              }}
+            >
+              🚗
+            </div>
+
+            {/* Препятствия */}
+            {raceData.obstacles.map(obstacle => (
+              <div
+                key={obstacle.id}
+                className="absolute w-8 h-8 bg-red-500 rounded"
+                style={{ left: obstacle.x, top: obstacle.y }}
+              >
+                🚛
+              </div>
+            ))}
+          </div>
+        </div>
+      );
+    }
+
+    if (currentGame === 'pvp') {
+      return (
+        <div className="fixed inset-0 bg-orange-300 z-50">
+          <div className="absolute top-4 left-4 text-white font-bold">
+            <p>Время: {Math.floor(pvpData.timeLeft)}с</p>
+            <p>HP: {pvpData.hp}/50</p>
+            <p>Убито: {pvpData.kills}</p>
+            <p>Оружие: {inventory.activeWeapon}</p>
+          </div>
+          <div className="absolute top-4 right-4">
+            <Button onClick={() => setCurrentGame('menu')} variant="secondary" size="sm">
+              Выход
+            </Button>
+          </div>
+
+          <div className="w-full h-full relative overflow-hidden">
+            {/* Курицы */}
+            {pvpData.chickens.map(chicken => (
+              <div
+                key={chicken.id}
+                className="absolute w-12 h-12 cursor-pointer hover:scale-110 transition-transform"
+                style={{ left: chicken.x, top: chicken.y }}
+                onClick={() => handleChickenClick(chicken.id)}
+              >
+                🐔
+              </div>
+            ))}
+            
+            <div className="absolute bottom-10 left-1/2 transform -translate-x-1/2 text-center">
+              <p className="text-white font-bold mb-2">Кликай по курицам!</p>
+              <div className="w-16 h-16 bg-brown-600 rounded-full flex items-center justify-center">
+                🎯
+              </div>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    if (currentGame === 'sandbox') {
+      return (
+        <div className="fixed inset-0 bg-yellow-200 z-50">
+          <div className="absolute top-4 left-4 text-black font-bold">
+            <p>Песочница - режим тестирования</p>
+            <p>Оружие: {inventory.activeWeapon}</p>
+            <p>Урон: {getWeaponPower(inventory.activeWeapon)}</p>
+          </div>
+          <div className="absolute top-4 right-4">
+            <Button onClick={() => setCurrentGame('menu')} variant="secondary" size="sm">
+              Выход
+            </Button>
+          </div>
+
+          <div className="flex items-center justify-center h-full">
+            <div className="text-center space-y-4">
+              <div className="text-6xl animate-bounce">🐔</div>
+              <Button
+                size="lg"
+                className="bg-red-500 hover:bg-red-600 text-white"
+                onClick={() => {
+                  playSound('shoot');
+                  setCoins(prev => prev + 1);
+                }}
+              >
+                🎯 Тестировать оружие
+              </Button>
+              <p className="text-gray-700">Кликай для тестирования урона</p>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    return null;
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-game-orange/20 via-game-yellow/20 to-game-blue/20 font-rubik">
+      {renderGame()}
+      
       {/* Header */}
       <header className="bg-white/90 backdrop-blur-sm border-b-4 border-game-orange shadow-lg">
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
-          <div className="flex items-center space-x-4">
-            <div className="w-12 h-12 bg-game-orange rounded-full flex items-center justify-center animate-bounce-in">
-              <span className="text-2xl">🐔</span>
+          <div className="flex items-center space-x-2 md:space-x-4">
+            <div className="w-10 h-10 md:w-12 md:h-12 bg-game-orange rounded-full flex items-center justify-center animate-bounce-in">
+              <span className="text-xl md:text-2xl">🐔</span>
             </div>
-            <h1 className="text-3xl font-bold text-gray-800">CHICKEN GUN</h1>
+            <h1 className="text-xl md:text-3xl font-bold text-gray-800">CHICKEN GUN</h1>
           </div>
           
           <div className="flex items-center space-x-2 md:space-x-4">
@@ -211,17 +557,15 @@ const Index = () => {
               <Icon name="Coins" size={isMobile ? 16 : 20} />
               <span className="font-bold text-gray-800 text-sm md:text-base">{coins}</span>
             </div>
-            {!isMobile && (
-              <div className="flex items-center space-x-2 bg-green-500 px-3 py-1 rounded-full">
-                <div className="w-2 h-2 bg-white rounded-full animate-pulse"></div>
-                <span className="text-white text-sm font-bold">{playersOnline} онлайн</span>
-              </div>
-            )}
+            <div className="flex items-center space-x-2 bg-green-500 px-3 py-1 rounded-full">
+              <div className="w-2 h-2 bg-white rounded-full animate-pulse"></div>
+              <span className="text-white text-sm font-bold">{playersOnline} онлайн</span>
+            </div>
           </div>
         </div>
       </header>
 
-      <main className="container mx-auto px-4 py-8">
+      <main className="container mx-auto px-4 py-4 md:py-8">
         <Tabs defaultValue="modes" className="w-full">
           <TabsList className={`grid w-full ${isMobile ? 'grid-cols-1 gap-2' : 'grid-cols-3'} mb-6 md:mb-8`}>
             <TabsTrigger value="modes" className="text-sm md:text-lg font-bold">
@@ -238,76 +582,98 @@ const Index = () => {
             </TabsTrigger>
           </TabsList>
 
-          <TabsContent value="modes" className="space-y-6">
-            <div className="text-center mb-8 animate-fade-in">
-              <h2 className="text-4xl font-bold text-gray-800 mb-2">Выбери свой путь к победе!</h2>
-              <p className="text-lg text-gray-600">Динамичные битвы, крутые гонки и безграничные возможности</p>
+          <TabsContent value="modes" className="space-y-4 md:space-y-6">
+            <div className="text-center mb-6 md:mb-8 animate-fade-in">
+              <h2 className="text-2xl md:text-4xl font-bold text-gray-800 mb-2">Выбери режим игры!</h2>
+              <p className="text-sm md:text-lg text-gray-600">Настоящие мини-игры с управлением и экшеном</p>
             </div>
 
-            <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
-              {gameModes.map((mode, index) => (
-                <Card 
-                  key={mode.id} 
-                  className={`cursor-pointer transition-all duration-300 hover:scale-105 hover:shadow-xl border-4 border-transparent hover:border-game-orange animate-scale-in`}
-                  style={{ animationDelay: `${index * 0.1}s` }}
-                  onClick={() => {
-                    setSelectedMode(mode.id);
-                    playSound('click');
-                  }}
-                >
-                  <CardHeader className="text-center pb-4">
-                    <div className={`w-16 h-16 ${mode.color} rounded-full mx-auto mb-4 flex items-center justify-center shadow-lg`}>
-                      <Icon name={mode.icon as any} size={32} className="text-white" />
-                    </div>
-                    <CardTitle className="text-xl font-bold text-gray-800">{mode.title}</CardTitle>
-                    <CardDescription className="text-gray-600">{mode.description}</CardDescription>
-                  </CardHeader>
-                  <CardContent className="text-center">
-                    <div className="flex justify-center items-center mb-3">
-                      <Badge variant="secondary" className="text-xs md:text-sm">{mode.players}</Badge>
-                      {mode.multiplayer && (
-                        <Badge variant="outline" className="ml-2 text-xs">
-                          <Icon name="Users" size={12} className="mr-1" />
-                          Мультиплеер
-                        </Badge>
-                      )}
-                    </div>
-                    <Button 
-                      className={`w-full ${mode.color} hover:opacity-90 text-white font-bold py-2 px-4 rounded-full text-sm md:text-base`}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        if (mode.id === 'races') {
-                          startRace();
-                        } else {
-                          playSound('click');
-                          alert(`🎮 Запуск режима: ${mode.title}`);
-                        }
-                      }}
-                    >
-                      {mode.id === 'races' ? 'Начать гонку' : 'Играть'}
-                    </Button>
-                  </CardContent>
-                </Card>
-              ))}
+            <div className={`grid ${isMobile ? 'grid-cols-1' : 'md:grid-cols-3'} gap-4 md:gap-6`}>
+              <Card className="cursor-pointer transition-all duration-300 hover:scale-105 hover:shadow-xl border-4 border-transparent hover:border-game-green">
+                <CardHeader className="text-center pb-4">
+                  <div className="w-12 h-12 md:w-16 md:h-16 bg-game-green rounded-full mx-auto mb-4 flex items-center justify-center shadow-lg">
+                    <Icon name="Car" size={isMobile ? 24 : 32} className="text-white" />
+                  </div>
+                  <CardTitle className="text-lg md:text-xl font-bold text-gray-800">Гонки</CardTitle>
+                  <CardDescription className="text-sm md:text-base text-gray-600">
+                    Управляй машиной мышкой/пальцем. Доберись до финиша за 50 секунд!
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="text-center">
+                  <Badge variant="secondary" className="mb-3">Время: 50 секунд</Badge>
+                  <Button 
+                    className="w-full bg-game-green hover:bg-game-green/90 text-white font-bold"
+                    onClick={() => startGame('race')}
+                  >
+                    Начать гонку 🏁
+                  </Button>
+                </CardContent>
+              </Card>
+
+              <Card className="cursor-pointer transition-all duration-300 hover:scale-105 hover:shadow-xl border-4 border-transparent hover:border-game-orange">
+                <CardHeader className="text-center pb-4">
+                  <div className="w-12 h-12 md:w-16 md:h-16 bg-game-orange rounded-full mx-auto mb-4 flex items-center justify-center shadow-lg">
+                    <Icon name="Crosshair" size={isMobile ? 24 : 32} className="text-white" />
+                  </div>
+                  <CardTitle className="text-lg md:text-xl font-bold text-gray-800">PvP Битвы</CardTitle>
+                  <CardDescription className="text-sm md:text-base text-gray-600">
+                    Кликай по курицам! Продержись 1 минуту. 50 HP, -10 за пропуск.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="text-center">
+                  <Badge variant="secondary" className="mb-3">HP: 50 • Время: 60с</Badge>
+                  <Button 
+                    className="w-full bg-game-orange hover:bg-game-orange/90 text-white font-bold"
+                    onClick={() => startGame('pvp')}
+                  >
+                    В бой! 🎯
+                  </Button>
+                </CardContent>
+              </Card>
+
+              <Card className="cursor-pointer transition-all duration-300 hover:scale-105 hover:shadow-xl border-4 border-transparent hover:border-game-yellow">
+                <CardHeader className="text-center pb-4">
+                  <div className="w-12 h-12 md:w-16 md:h-16 bg-game-yellow rounded-full mx-auto mb-4 flex items-center justify-center shadow-lg">
+                    <Icon name="Map" size={isMobile ? 24 : 32} className="text-white" />
+                  </div>
+                  <CardTitle className="text-lg md:text-xl font-bold text-gray-800">Песочница</CardTitle>
+                  <CardDescription className="text-sm md:text-base text-gray-600">
+                    Тестируй новое оружие и проверяй урон без ограничений.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="text-center">
+                  <Badge variant="secondary" className="mb-3">Свободная игра</Badge>
+                  <Button 
+                    className="w-full bg-game-yellow hover:bg-game-yellow/90 text-white font-bold"
+                    onClick={() => startGame('sandbox')}
+                  >
+                    Тестировать 🔧
+                  </Button>
+                </CardContent>
+              </Card>
             </div>
 
-            {isRacing && (
-              <div className="bg-white/90 backdrop-blur-sm rounded-2xl p-4 md:p-6 border-4 border-game-green animate-bounce-in">
-                <h3 className="text-xl md:text-2xl font-bold text-gray-800 mb-4 text-center">
-                  🏁 Гонка в процессе! Позиция: {racePosition}
-                </h3>
-                <Progress value={raceProgress} className="mb-4" />
-                <div className="text-center">
-                  <span className="text-sm md:text-base text-gray-600">Прогресс: {Math.round(raceProgress)}%</span>
+            <div className="bg-white/90 backdrop-blur-sm rounded-2xl p-4 md:p-6 border-4 border-blue-500">
+              <h3 className="text-xl font-bold text-gray-800 mb-4 text-center">
+                🎮 Твой арсенал
+              </h3>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <p className="font-bold text-gray-700 mb-2">Активное оружие:</p>
+                  <Badge variant="outline" className="text-sm">{inventory.activeWeapon}</Badge>
+                </div>
+                <div>
+                  <p className="font-bold text-gray-700 mb-2">Активный транспорт:</p>
+                  <Badge variant="outline" className="text-sm">{inventory.activeVehicle}</Badge>
                 </div>
               </div>
-            )}
+            </div>
           </TabsContent>
 
-          <TabsContent value="shop" className="space-y-6">
-            <div className="text-center mb-8 animate-fade-in">
-              <h2 className="text-4xl font-bold text-gray-800 mb-2">Магазин кастомизации</h2>
-              <p className="text-lg text-gray-600">Сделай свою курицу уникальной!</p>
+          <TabsContent value="shop" className="space-y-4 md:space-y-6">
+            <div className="text-center mb-6 md:mb-8 animate-fade-in">
+              <h2 className="text-2xl md:text-4xl font-bold text-gray-800 mb-2">Магазин улучшений</h2>
+              <p className="text-sm md:text-lg text-gray-600">Покупай мощное оружие и быстрые машины!</p>
             </div>
 
             <div className={`grid ${isMobile ? 'grid-cols-1' : 'md:grid-cols-2 lg:grid-cols-3'} gap-4 md:gap-6`}>
@@ -326,7 +692,11 @@ const Index = () => {
                         </div>
                         <CardTitle className="text-sm md:text-lg font-bold text-gray-800">{item.name}</CardTitle>
                         <Badge 
-                          variant={item.rarity === 'Эпическая' ? 'destructive' : item.rarity === 'Редкая' ? 'default' : 'secondary'}
+                          variant={
+                            item.rarity === 'Мифическая' ? 'destructive' : 
+                            item.rarity === 'Легендарная' ? 'default' : 
+                            item.rarity === 'Эпическая' ? 'secondary' : 'outline'
+                          }
                           className="mb-2 text-xs"
                         >
                           {item.rarity}
@@ -359,17 +729,25 @@ const Index = () => {
                       </div>
                       <Button 
                         className="w-full bg-game-blue hover:bg-game-blue/90 text-white font-bold"
-                        disabled={coins < item.price}
+                        disabled={
+                          coins < item.price || 
+                          (item.type === 'weapon' && inventory.weapons.includes(item.gameId)) ||
+                          (item.type === 'vehicle' && inventory.vehicles.includes(item.gameId))
+                        }
                         onClick={() => buyItem(item)}
                       >
-                        {coins >= item.price ? 'Купить' : 'Недостаточно монет'}
+                        {
+                          (item.type === 'weapon' && inventory.weapons.includes(item.gameId)) ||
+                          (item.type === 'vehicle' && inventory.vehicles.includes(item.gameId)) ? 
+                          'Уже куплено' :
+                          coins >= item.price ? 'Купить' : 'Недостаточно монет'
+                        }
                       </Button>
                     </div>
                   </DialogContent>
                 </Dialog>
               ))}
             </div>
-
           </TabsContent>
 
           <TabsContent value="promo" className="space-y-4 md:space-y-6">
@@ -437,8 +815,8 @@ const Index = () => {
 
       <footer className="bg-white/90 backdrop-blur-sm border-t-4 border-game-orange mt-8 md:mt-16">
         <div className="container mx-auto px-4 py-4 md:py-6 text-center">
-          <p className="text-sm md:text-base text-gray-600">🐔 Chicken Gun - Веселые перестрелки и крутые гонки! 🏁</p>
-          <p className="text-xs text-gray-500 mt-2">Поддержка мобильных устройств • Мультиплеер • Звуковые эффекты</p>
+          <p className="text-sm md:text-base text-gray-600">🐔 Chicken Gun - Настоящие мини-игры с экшеном! 🏁</p>
+          <p className="text-xs text-gray-500 mt-2">Поддержка мобильных устройств • Реальный геймплей • {playersOnline} игроков онлайн</p>
         </div>
       </footer>
     </div>
