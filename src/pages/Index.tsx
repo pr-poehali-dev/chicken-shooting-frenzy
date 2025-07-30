@@ -7,13 +7,18 @@ import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Progress } from '@/components/ui/progress';
 import Icon from '@/components/ui/icon';
+import GoogleAuth from '@/components/auth/GoogleAuth';
 
 const Index = () => {
   const [selectedMode, setSelectedMode] = useState('');
-  const [coins, setCoins] = useState(1250);
+  const [coins, setCoins] = useState(100);
   const [promoCode, setPromoCode] = useState('');
   const [usedPromoCodes, setUsedPromoCodes] = useState<string[]>([]);
   const [playersOnline, setPlayersOnline] = useState(0);
+  
+  // Авторизация
+  const [user, setUser] = useState<any>(null);
+  const [showAuth, setShowAuth] = useState(false);
 
   // Состояния игр
   const [currentGame, setCurrentGame] = useState<'menu' | 'race' | 'pvp' | 'sandbox'>('menu');
@@ -47,6 +52,41 @@ const Index = () => {
     activeWeapon: 'pistol',
     activeVehicle: 'basic-car'
   });
+
+  // Статистика
+  const [stats, setStats] = useState({
+    gamesPlayed: 0,
+    totalKills: 0,
+    bestRaceTime: 0
+  });
+
+  // Обработчики авторизации
+  const handleLogin = (userData: any, gameData: any) => {
+    setUser(userData);
+    if (gameData.coins !== undefined) setCoins(gameData.coins);
+    if (gameData.usedPromoCodes) setUsedPromoCodes(gameData.usedPromoCodes);
+    if (gameData.inventory) setInventory(gameData.inventory);
+    if (gameData.stats) setStats(gameData.stats);
+    setShowAuth(false);
+  };
+
+  const handleLogout = () => {
+    setUser(null);
+    // Сбрасываем до начальных значений
+    setCoins(100);
+    setUsedPromoCodes([]);
+    setInventory({
+      weapons: ['pistol'],
+      vehicles: ['basic-car'],
+      activeWeapon: 'pistol',
+      activeVehicle: 'basic-car'
+    });
+    setStats({
+      gamesPlayed: 0,
+      totalKills: 0,
+      bestRaceTime: 0
+    });
+  };
 
   const gameCanvasRef = useRef<HTMLDivElement>(null);
   const [isMobile, setIsMobile] = useState(false);
@@ -147,10 +187,17 @@ const Index = () => {
 
         if (collision) {
           if (prev.lives > 1) {
+            playSound('hit');
             return { ...prev, lives: prev.lives - 1, obstacles: newObstacles.filter(obs => 
               !(Math.abs(obs.x - prev.playerX) < 25 && Math.abs(obs.y - prev.playerY) < 25)
             )};
           } else {
+            playSound('error');
+            setStats(prevStats => ({ ...prevStats, gamesPlayed: prevStats.gamesPlayed + 1 }));
+            setTimeout(() => {
+              alert('💥 Авария! Игра окончена!');
+              setCurrentGame('menu');
+            }, 100);
             return { ...prev, isPlaying: false };
           }
         }
@@ -160,6 +207,11 @@ const Index = () => {
           // Победа!
           const reward = 200 + (prev.lives * 50);
           setCoins(prevCoins => prevCoins + reward);
+          setStats(prevStats => ({ 
+            ...prevStats, 
+            gamesPlayed: prevStats.gamesPlayed + 1,
+            bestRaceTime: Math.max(prevStats.bestRaceTime, 50)
+          }));
           setTimeout(() => {
             alert(`🏁 Поздравляю! Ты доехал до финиша! +${reward} монет`);
             setCurrentGame('menu');
@@ -207,6 +259,7 @@ const Index = () => {
         const newTimeLeft = prev.timeLeft - 0.1;
         
         if (newHp <= 0) {
+          setStats(prevStats => ({ ...prevStats, gamesPlayed: prevStats.gamesPlayed + 1 }));
           setTimeout(() => {
             alert('💀 Игра окончена! Тебя одолели курицы!');
             setCurrentGame('menu');
@@ -217,6 +270,11 @@ const Index = () => {
         if (newTimeLeft <= 0) {
           const reward = prev.kills * 10 + 100;
           setCoins(prevCoins => prevCoins + reward);
+          setStats(prevStats => ({ 
+            ...prevStats, 
+            gamesPlayed: prevStats.gamesPlayed + 1,
+            totalKills: prevStats.totalKills + prev.kills
+          }));
           setTimeout(() => {
             alert(`🎉 Победа! Ты продержался минуту! Убито куриц: ${prev.kills}. +${reward} монет`);
             setCurrentGame('menu');
@@ -439,8 +497,8 @@ const Index = () => {
             <div
               className="absolute w-8 h-8 bg-blue-500 rounded transform -translate-x-1/2"
               style={{ 
-                left: raceData.playerX, 
-                top: raceData.playerY,
+                left: `${Math.min(raceData.playerX, window.innerWidth - 50)}px`, 
+                top: `${raceData.playerY}px`,
                 transition: isMobile ? 'none' : 'left 0.1s ease'
               }}
             >
