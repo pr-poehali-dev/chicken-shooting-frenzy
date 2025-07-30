@@ -136,12 +136,13 @@ const Index = () => {
 
     let clientX: number;
     if ('touches' in e) {
+      e.preventDefault();
       clientX = e.touches[0].clientX;
     } else {
       clientX = e.clientX;
     }
 
-    const x = Math.max(10, Math.min(rect.width - 30, clientX - rect.left - 15));
+    const x = Math.max(10, Math.min(rect.width - 40, clientX - rect.left - 20));
     setRaceData(prev => ({ ...prev, playerX: x }));
   }, [currentGame, raceData.isPlaying]);
 
@@ -168,13 +169,14 @@ const Index = () => {
       setRaceData(prev => {
         const newObstacles = prev.obstacles
           .map(obs => ({ ...obs, y: obs.y + prev.speed }))
-          .filter(obs => obs.y < 500);
+          .filter(obs => obs.y < window.innerHeight);
 
-        // Добавляем новые препятствия
-        if (Math.random() < 0.03) {
+        // Добавляем новые препятствия - быстрее и по всей ширине
+        if (Math.random() < 0.08) {
+          const canvasWidth = gameCanvasRef.current?.clientWidth || 400;
           newObstacles.push({
             id: Date.now(),
-            x: Math.random() * 270 + 10,
+            x: Math.random() * (canvasWidth - 60) + 30,
             y: -20
           });
         }
@@ -239,21 +241,22 @@ const Index = () => {
             x: chicken.x + chicken.speed,
             y: chicken.y + (Math.random() - 0.5) * 2
           }))
-          .filter(chicken => chicken.x < 320);
+          .filter(chicken => chicken.x < window.innerWidth);
 
-        // Добавляем новых куриц
+        // Добавляем новых куриц - быстрее
         const newChickens = [...updatedChickens];
-        if (Math.random() < 0.15) {
+        if (Math.random() < 0.25) {
           newChickens.push({
             id: Date.now(),
             x: -30,
-            y: Math.random() * 400 + 50,
-            speed: 2 + Math.random() * 3
+            y: Math.random() * (window.innerHeight - 100) + 50,
+            speed: 2 + Math.random() * 4
           });
         }
 
         // Проверяем куриц, которые убежали
-        const escapedChickens = prev.chickens.filter(c => c.x >= 320).length;
+        const canvasWidth = window.innerWidth || 400;
+        const escapedChickens = prev.chickens.filter(c => c.x >= canvasWidth).length;
         const newHp = Math.max(0, prev.hp - escapedChickens * 10);
         
         const newTimeLeft = prev.timeLeft - 0.1;
@@ -475,6 +478,7 @@ const Index = () => {
             className="w-full h-full relative overflow-hidden cursor-none"
             onMouseMove={handleMouseMove}
             onTouchMove={handleMouseMove}
+            onTouchStart={handleMouseMove}
           >
             {/* Дорога */}
             <div className="absolute inset-0 bg-gray-700">
@@ -509,8 +513,11 @@ const Index = () => {
             {raceData.obstacles.map(obstacle => (
               <div
                 key={obstacle.id}
-                className="absolute w-8 h-8 bg-red-500 rounded"
-                style={{ left: obstacle.x, top: obstacle.y }}
+                className="absolute w-8 h-8 bg-red-500 rounded z-5"
+                style={{ 
+                  left: `${obstacle.x}px`, 
+                  top: `${obstacle.y}px` 
+                }}
               >
                 🚛
               </div>
@@ -540,9 +547,18 @@ const Index = () => {
             {pvpData.chickens.map(chicken => (
               <div
                 key={chicken.id}
-                className="absolute w-12 h-12 cursor-pointer hover:scale-110 transition-transform"
-                style={{ left: chicken.x, top: chicken.y }}
+                className="absolute w-12 h-12 cursor-pointer hover:scale-110 transition-transform z-10"
+                style={{ 
+                  left: `${chicken.x}px`, 
+                  top: `${chicken.y}px`,
+                  pointerEvents: 'auto'
+                }}
                 onClick={() => handleChickenClick(chicken.id)}
+                onTouchStart={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  handleChickenClick(chicken.id);
+                }}
               >
                 🐔
               </div>
