@@ -37,7 +37,7 @@ const Index = () => {
 
   // Состояния PvP
   const [pvpData, setPvpData] = useState({
-    chickens: [] as Array<{id: number, x: number, y: number, speed: number}>,
+    chickens: [] as Array<{id: number, x: number, y: number, speed: number, hp: number, maxHp: number}>,
     weapon: 'pistol',
     isPlaying: false,
     timeLeft: 60,
@@ -151,13 +151,28 @@ const Index = () => {
     if (currentGame !== 'pvp' || !pvpData.isPlaying) return;
     
     playSound('shoot');
-    setPvpData(prev => ({
-      ...prev,
-      chickens: prev.chickens.filter(c => c.id !== chickenId),
-      kills: prev.kills + 1
-    }));
+    const weaponDamage = getWeaponPower(inventory.activeWeapon);
     
-    const reward = getWeaponPower(inventory.activeWeapon);
+    setPvpData(prev => {
+      const updatedChickens = prev.chickens.map(chicken => {
+        if (chicken.id === chickenId) {
+          const newHp = Math.max(0, chicken.hp - weaponDamage);
+          return { ...chicken, hp: newHp };
+        }
+        return chicken;
+      }).filter(chicken => chicken.hp > 0);
+      
+      // Подсчитываем убитых куриц
+      const killedChickens = prev.chickens.length - updatedChickens.length;
+      
+      return {
+        ...prev,
+        chickens: updatedChickens,
+        kills: prev.kills + killedChickens
+      };
+    });
+    
+    const reward = Math.floor(weaponDamage / 2);
     setCoins(prev => prev + reward);
   };
 
@@ -246,11 +261,14 @@ const Index = () => {
         // Добавляем новых куриц - быстрее
         const newChickens = [...updatedChickens];
         if (Math.random() < 0.25) {
+          const chickenHp = 10 + Math.floor(Math.random() * 15); // HP от 10 до 25
           newChickens.push({
             id: Date.now(),
             x: -30,
             y: Math.random() * (window.innerHeight - 100) + 50,
-            speed: 2 + Math.random() * 4
+            speed: 2 + Math.random() * 4,
+            hp: chickenHp,
+            maxHp: chickenHp
           });
         }
 
@@ -547,7 +565,7 @@ const Index = () => {
             {pvpData.chickens.map(chicken => (
               <div
                 key={chicken.id}
-                className="absolute w-12 h-12 cursor-pointer hover:scale-110 transition-transform z-10"
+                className="absolute cursor-pointer hover:scale-110 transition-transform z-10"
                 style={{ 
                   left: `${chicken.x}px`, 
                   top: `${chicken.y}px`,
@@ -560,7 +578,20 @@ const Index = () => {
                   handleChickenClick(chicken.id);
                 }}
               >
-                🐔
+                <div className="relative">
+                  <div className="text-4xl">🐔</div>
+                  {/* HP полоска */}
+                  <div className="absolute -top-2 left-0 w-12 h-1 bg-red-300 rounded">
+                    <div 
+                      className="h-full bg-red-600 rounded transition-all duration-200"
+                      style={{ width: `${(chicken.hp / chicken.maxHp) * 100}%` }}
+                    />
+                  </div>
+                  {/* HP текст */}
+                  <div className="absolute -top-6 left-1/2 transform -translate-x-1/2 text-xs font-bold text-white bg-black/50 px-1 rounded">
+                    {chicken.hp}
+                  </div>
+                </div>
               </div>
             ))}
             
