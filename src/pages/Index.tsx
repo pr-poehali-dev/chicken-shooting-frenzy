@@ -24,15 +24,6 @@ const Index = () => {
   const [currentGame, setCurrentGame] = useState<'menu' | 'race' | 'pvp' | 'sandbox'>('menu');
   const [gameStats, setGameStats] = useState({ hp: 50, timeLeft: 60, score: 0 });
   
-  // Состояния песочницы
-  const [sandboxData, setSandboxData] = useState({
-    selectedMap: 'forest',
-    chickenX: 200,
-    chickenY: 200,
-    isPlaying: false,
-    direction: 'right' as 'up' | 'down' | 'left' | 'right'
-  });
-  
   // Состояния гонки
   const [raceData, setRaceData] = useState({
     playerX: 150,
@@ -68,15 +59,6 @@ const Index = () => {
     totalKills: 0,
     bestRaceTime: 0
   });
-  
-  // Карты для песочницы
-  const sandboxMaps = [
-    { id: 'forest', name: 'Лес', emoji: '🌲', bg: 'bg-green-400' },
-    { id: 'desert', name: 'Пустыня', emoji: '🏜️', bg: 'bg-yellow-400' },
-    { id: 'city', name: 'Город', emoji: '🏙️', bg: 'bg-gray-400' },
-    { id: 'space', name: 'Космос', emoji: '🌌', bg: 'bg-purple-900' },
-    { id: 'ocean', name: 'Океан', emoji: '🌊', bg: 'bg-blue-400' }
-  ];
 
   // Обработчики авторизации
   const handleLogin = (userData: any, gameData: any) => {
@@ -85,7 +67,6 @@ const Index = () => {
     if (gameData.usedPromoCodes) setUsedPromoCodes(gameData.usedPromoCodes);
     if (gameData.inventory) setInventory(gameData.inventory);
     if (gameData.stats) setStats(gameData.stats);
-    if (gameData.sandboxData) setSandboxData(gameData.sandboxData);
     setShowAuth(false);
   };
 
@@ -104,13 +85,6 @@ const Index = () => {
       gamesPlayed: 0,
       totalKills: 0,
       bestRaceTime: 0
-    });
-    setSandboxData({
-      selectedMap: 'forest',
-      chickenX: 200,
-      chickenY: 200,
-      isPlaying: false,
-      direction: 'right'
     });
   };
 
@@ -499,13 +473,6 @@ const Index = () => {
         hp: 50,
         kills: 0
       });
-    } else if (gameType === 'sandbox') {
-      setSandboxData(prev => ({
-        ...prev,
-        isPlaying: true,
-        chickenX: 200,
-        chickenY: 200
-      }));
     }
   };
 
@@ -640,158 +607,27 @@ const Index = () => {
     }
 
     if (currentGame === 'sandbox') {
-      const currentMap = sandboxMaps.find(m => m.id === sandboxData.selectedMap) || sandboxMaps[0];
-      
       return (
-        <div className={`fixed inset-0 ${currentMap.bg} z-50 relative`}>
-          {/* Верхняя панель */}
-          <div className="absolute top-4 left-4 text-white font-bold bg-black/50 rounded-lg p-3">
-            <p>🗺️ Карта: {currentMap.name} {currentMap.emoji}</p>
-            <p>🐔 Управление: WASD или стрелки</p>
+        <div className="fixed inset-0 bg-yellow-200 z-50">
+          <div className="absolute top-4 left-4 text-black font-bold">
+            <p>Песочница - режим тестирования</p>
+            <p>Оружие: {inventory.activeWeapon}</p>
+            <p>Урон: {getWeaponPower(inventory.activeWeapon)}</p>
           </div>
-          
-          {/* Селектор карт */}
-          <div className="absolute top-4 left-1/2 transform -translate-x-1/2">
-            <div className="flex gap-2 bg-black/50 rounded-lg p-2">
-              {sandboxMaps.map(map => (
-                <Button
-                  key={map.id}
-                  size="sm"
-                  variant={sandboxData.selectedMap === map.id ? "default" : "outline"}
-                  onClick={() => setSandboxData(prev => ({ ...prev, selectedMap: map.id }))}
-                  className="text-xs"
-                >
-                  {map.emoji} {map.name}
-                </Button>
-              ))}
-            </div>
-          </div>
-          
           <div className="absolute top-4 right-4">
             <Button onClick={() => setCurrentGame('menu')} variant="secondary" size="sm">
               Выход
             </Button>
           </div>
 
-          {/* Игровая область */}
-          <div 
-            className="w-full h-full relative overflow-hidden cursor-none"
-            tabIndex={0}
-            onKeyDown={(e) => {
-              const speed = 10;
-              setSandboxData(prev => {
-                let newX = prev.chickenX;
-                let newY = prev.chickenY;
-                let newDirection = prev.direction;
-                
-                switch(e.key.toLowerCase()) {
-                  case 'w':
-                  case 'arrowup':
-                    newY = Math.max(20, prev.chickenY - speed);
-                    newDirection = 'up';
-                    break;
-                  case 's':
-                  case 'arrowdown':
-                    newY = Math.min(window.innerHeight - 80, prev.chickenY + speed);
-                    newDirection = 'down';
-                    break;
-                  case 'a':
-                  case 'arrowleft':
-                    newX = Math.max(20, prev.chickenX - speed);
-                    newDirection = 'left';
-                    break;
-                  case 'd':
-                  case 'arrowright':
-                    newX = Math.min(window.innerWidth - 80, prev.chickenX + speed);
-                    newDirection = 'right';
-                    break;
-                }
-                
-                return { ...prev, chickenX: newX, chickenY: newY, direction: newDirection };
-              });
-            }}
-          >
-            {/* Фоновые элементы карты */}
-            {currentMap.id === 'forest' && (
-              <>
-                {[...Array(15)].map((_, i) => (
-                  <div key={i} className="absolute text-4xl" style={{
-                    left: `${Math.random() * 80 + 10}%`,
-                    top: `${Math.random() * 80 + 10}%`
-                  }}>🌲</div>
-                ))}
-              </>
-            )}
-            
-            {currentMap.id === 'desert' && (
-              <>
-                {[...Array(10)].map((_, i) => (
-                  <div key={i} className="absolute text-4xl" style={{
-                    left: `${Math.random() * 80 + 10}%`,
-                    top: `${Math.random() * 80 + 10}%`
-                  }}>🌵</div>
-                ))}
-              </>
-            )}
-            
-            {currentMap.id === 'city' && (
-              <>
-                {[...Array(8)].map((_, i) => (
-                  <div key={i} className="absolute text-5xl" style={{
-                    left: `${Math.random() * 70 + 15}%`,
-                    top: `${Math.random() * 70 + 15}%`
-                  }}>🏢</div>
-                ))}
-              </>
-            )}
-            
-            {currentMap.id === 'space' && (
-              <>
-                {[...Array(20)].map((_, i) => (
-                  <div key={i} className="absolute text-2xl" style={{
-                    left: `${Math.random() * 90 + 5}%`,
-                    top: `${Math.random() * 90 + 5}%`
-                  }}>⭐</div>
-                ))}
-              </>
-            )}
-            
-            {currentMap.id === 'ocean' && (
-              <>
-                {[...Array(12)].map((_, i) => (
-                  <div key={i} className="absolute text-3xl" style={{
-                    left: `${Math.random() * 80 + 10}%`,
-                    top: `${Math.random() * 80 + 10}%`
-                  }}>🐠</div>
-                ))}
-              </>
-            )}
-            
-            {/* Управляемая курица */}
-            <div
-              className="absolute w-16 h-16 cursor-pointer transition-all duration-100 z-10"
-              style={{ 
-                left: `${sandboxData.chickenX}px`, 
-                top: `${sandboxData.chickenY}px`,
-                transform: sandboxData.direction === 'left' ? 'scaleX(-1)' : 'scaleX(1)'
-              }}
-            >
-              <div className="text-6xl animate-bounce hover:scale-110 transition-transform">
-                🐔
-              </div>
-            </div>
-            
-            {/* Инструкции */}
-            <div className="absolute bottom-10 left-1/2 transform -translate-x-1/2 text-center">
-              <div className="bg-black/70 text-white rounded-lg p-4">
-                <p className="font-bold mb-2">🎮 Управление курицей</p>
-                <div className="text-sm space-y-1">
-                  <p>WASD или стрелки - движение</p>
-                  <p>Исследуй карту {currentMap.name}! {currentMap.emoji}</p>
-                </div>
-              </div>
-            </div>
-          </div>
+          <div className="flex items-center justify-center h-full">
+            <div className="text-center space-y-4">
+              <div className="text-6xl animate-bounce">🐔</div>
+              <Button
+                size="lg"
+                className="bg-red-500 hover:bg-red-600 text-white"
+                onClick={() => {
+                  playSound('shoot');
                   setCoins(prev => prev + 1);
                 }}
               >
