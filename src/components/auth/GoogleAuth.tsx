@@ -25,6 +25,13 @@ interface GameData {
     totalKills: number;
     bestRaceTime: number;
   };
+  sandboxData?: {
+    selectedMap: string;
+    chickenX: number;
+    chickenY: number;
+    isPlaying: boolean;
+    direction: 'up' | 'down' | 'left' | 'right';
+  };
 }
 
 interface GoogleAuthProps {
