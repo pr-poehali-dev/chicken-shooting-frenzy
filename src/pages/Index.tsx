@@ -406,19 +406,39 @@ const Index = () => {
             <p>Карта: {currentMap.name} {currentMap.emoji}</p>
             <p>Позиция: ({Math.round(sandboxData.chickenX)}, {Math.round(sandboxData.chickenY)})</p>
           </div>
-          <div className="absolute top-4 right-4 space-x-2">
-            <select 
-              value={sandboxData.selectedMap} 
-              onChange={(e) => setSandboxData(prev => ({ ...prev, selectedMap: e.target.value }))}
-              className="px-2 py-1 rounded text-black"
-            >
+          <div className="absolute top-4 right-4 flex flex-col space-y-2">
+            <div className="flex space-x-2">
+              <select 
+                value={sandboxData.selectedMap} 
+                onChange={(e) => setSandboxData(prev => ({ ...prev, selectedMap: e.target.value }))}
+                className="px-3 py-2 rounded-lg text-black font-medium bg-white border-2 border-white shadow-lg hover:border-blue-300 transition-colors cursor-pointer"
+              >
+                {sandboxMaps.map(map => (
+                  <option key={map.id} value={map.id}>{map.emoji} {map.name}</option>
+                ))}
+              </select>
+              <Button onClick={() => setCurrentGame('menu')} variant="secondary" size="sm">
+                Выход
+              </Button>
+            </div>
+            
+            {/* Кнопки быстрого выбора карт */}
+            <div className="flex space-x-1 bg-black/50 rounded-lg p-2">
               {sandboxMaps.map(map => (
-                <option key={map.id} value={map.id}>{map.emoji} {map.name}</option>
+                <button
+                  key={map.id}
+                  onClick={() => setSandboxData(prev => ({ ...prev, selectedMap: map.id }))}
+                  className={`w-10 h-10 rounded-lg text-xl transition-all ${
+                    sandboxData.selectedMap === map.id 
+                      ? 'bg-white text-black scale-110' 
+                      : 'bg-black/30 text-white hover:bg-white/20'
+                  }`}
+                  title={map.name}
+                >
+                  {map.emoji}
+                </button>
               ))}
-            </select>
-            <Button onClick={() => setCurrentGame('menu')} variant="secondary" size="sm">
-              Выход
-            </Button>
+            </div>
           </div>
           
           {/* Игровая область */}
@@ -625,12 +645,37 @@ const Index = () => {
                 <div className="text-4xl md:text-6xl mb-2 md:mb-4">🎮</div>
                 <h3 className="text-lg md:text-xl font-bold mb-2">Свободная игра</h3>
                 <p className="text-sm md:text-base text-gray-600 mb-4">Исследуйте мир без ограничений</p>
+                
+                {/* Выбор карты */}
+                <div className="mb-4">
+                  <p className="text-sm font-medium mb-2">Выберите карту:</p>
+                  <div className="flex justify-center space-x-1 mb-2">
+                    {sandboxMaps.map(map => (
+                      <button
+                        key={map.id}
+                        onClick={() => setSandboxData(prev => ({ ...prev, selectedMap: map.id }))}
+                        className={`w-8 h-8 rounded text-lg transition-all ${
+                          sandboxData.selectedMap === map.id 
+                            ? 'bg-green-500 text-white scale-110' 
+                            : 'bg-gray-200 hover:bg-gray-300'
+                        }`}
+                        title={map.name}
+                      >
+                        {map.emoji}
+                      </button>
+                    ))}
+                  </div>
+                  <p className="text-xs text-gray-500">
+                    {sandboxMaps.find(m => m.id === sandboxData.selectedMap)?.name}
+                  </p>
+                </div>
+                
                 <Button 
                   onClick={() => startGame('sandbox')} 
                   className="w-full bg-green-500 hover:bg-green-600" 
                   size={isMobile ? "sm" : "default"}
                 >
-                  Исследовать
+                  Исследовать {sandboxMaps.find(m => m.id === sandboxData.selectedMap)?.emoji}
                 </Button>
               </CardContent>
             </Card>
