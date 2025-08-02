@@ -511,7 +511,7 @@ const Index = () => {
               <span className="text-xl md:text-2xl font-bold text-white">🐔</span>
             </div>
             <div>
-              <h1 className="text-xl md:text-2xl font-bold text-game-dark">ПоеХали Игры</h1>
+              <h1 className="text-xl md:text-2xl font-extrabold text-red-800 text-center">red gan:</h1>
               <p className="text-xs md:text-sm text-gray-600">Максимальный геймплей</p>
             </div>
           </div>
