@@ -792,10 +792,6 @@ const Index = () => {
               </div>
             </div>
           </div>
-              <p className="text-gray-700">Кликай для тестирования урона</p>
-            </div>
-          </div>
-        </div>
       );
     }
 
