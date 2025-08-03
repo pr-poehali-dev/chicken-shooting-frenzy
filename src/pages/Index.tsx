@@ -249,43 +249,6 @@ const Index = () => {
     }
   };
 
-  // Функция запуска игр
-  const startGame = (gameType: 'race' | 'pvp' | 'sandbox') => {
-    playSound('click');
-    setCurrentGame(gameType);
-    
-    if (gameType === 'race') {
-      setRaceData(prev => ({
-        ...prev,
-        isPlaying: true,
-        gameTime: 0,
-        lives: 3,
-        playerX: 150,
-        playerY: 400,
-        obstacles: []
-      }));
-    } else if (gameType === 'pvp') {
-      setPvpData(prev => ({
-        ...prev,
-        isPlaying: true,
-        ammo: 30,
-        kills: 0,
-        chickens: Array.from({ length: 6 }, (_, i) => ({
-          id: i,
-          hp: 100,
-          isAlive: true
-        }))
-      }));
-    } else if (gameType === 'sandbox') {
-      setSandboxData(prev => ({
-        ...prev,
-        isPlaying: true,
-        chickenX: 200,
-        chickenY: 200
-      }));
-    }
-  };
-
   // Управление клавиатурой для песочницы
   useEffect(() => {
     if (currentGame !== 'sandbox' || !sandboxData.isPlaying) return;
