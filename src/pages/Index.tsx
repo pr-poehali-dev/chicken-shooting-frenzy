@@ -298,6 +298,98 @@ const Index = () => {
     return () => window.removeEventListener('keydown', handleKeyPress);
   }, [currentGame, sandboxData.isPlaying]);
 
+  // Управление для гонок
+  useEffect(() => {
+    if (currentGame !== 'race' || !raceData.isPlaying) return;
+
+    const handleKeyPress = (e: KeyboardEvent) => {
+      const moveSpeed = 15;
+      setRaceData(prev => {
+        let newX = prev.playerX;
+        let newY = prev.playerY;
+
+        switch (e.key.toLowerCase()) {
+          case 'w':
+          case 'arrowup':
+            newY = Math.max(50, prev.playerY - moveSpeed);
+            break;
+          case 's':
+          case 'arrowdown':
+            newY = Math.min(window.innerHeight - 100, prev.playerY + moveSpeed);
+            break;
+          case 'a':
+          case 'arrowleft':
+            newX = Math.max(50, prev.playerX - moveSpeed);
+            break;
+          case 'd':
+          case 'arrowright':
+            newX = Math.min(window.innerWidth - 100, prev.playerX + moveSpeed);
+            break;
+        }
+
+        return {
+          ...prev,
+          playerX: newX,
+          playerY: newY
+        };
+      });
+    };
+
+    window.addEventListener('keydown', handleKeyPress);
+    return () => window.removeEventListener('keydown', handleKeyPress);
+  }, [currentGame, raceData.isPlaying]);
+
+  // Генерация препятствий и игровая логика гонок
+  useEffect(() => {
+    if (currentGame !== 'race' || !raceData.isPlaying) return;
+
+    const gameInterval = setInterval(() => {
+      setRaceData(prev => {
+        let newObstacles = prev.obstacles;
+        
+        // Добавляем новые препятствия
+        if (Math.random() < 0.3) {
+          newObstacles = [...prev.obstacles, {
+            id: Date.now(),
+            x: Math.random() * (window.innerWidth - 100),
+            y: -50
+          }];
+        }
+        
+        // Двигаем препятствия вниз
+        newObstacles = newObstacles
+          .map(obstacle => ({ ...obstacle, y: obstacle.y + prev.speed * 2 }))
+          .filter(obstacle => obstacle.y < window.innerHeight);
+        
+        // Проверяем столкновения
+        const collision = newObstacles.some(obstacle => 
+          Math.abs(obstacle.x - prev.playerX) < 50 && 
+          Math.abs(obstacle.y - prev.playerY) < 50
+        );
+        
+        if (collision) {
+          playSound('hit');
+          const newLives = prev.lives - 1;
+          if (newLives <= 0) {
+            setCurrentGame('menu');
+            alert('💥 Игра окончена! Вы врезались!');
+            return prev;
+          }
+          return { ...prev, lives: newLives };
+        }
+
+        return {
+          ...prev,
+          obstacles: newObstacles,
+          gameTime: prev.gameTime + 0.1,
+          score: prev.score + 1
+        };
+      });
+    }, 100);
+
+    return () => clearInterval(gameInterval);
+  }, [currentGame, raceData.isPlaying]);
+
   const startGame = (gameType: 'race' | 'pvp' | 'sandbox') => {
     playSound('click');
     setCurrentGame(gameType);
@@ -341,11 +433,12 @@ const Index = () => {
   const renderGame = () => {
     if (currentGame === 'race') {
       return (
-        <div className="fixed inset-0 bg-green-400 z-50">
-          <div className="absolute top-4 left-4 text-white font-bold">
-            <p>Время: {Math.floor(raceData.gameTime)}с / 50с</p>
-            <p>Жизни: {raceData.lives}</p>
-            <p>Транспорт: {inventory.activeVehicle}</p>
+        <div className="fixed inset-0 bg-gradient-to-b from-sky-400 to-green-400 z-50">
+          <div className="absolute top-4 left-4 text-white font-bold bg-black/50 rounded-lg p-3">
+            <p>⏱️ Время: {Math.floor(raceData.gameTime)}с / 60с</p>
+            <p>❤️ Жизни: {raceData.lives}</p>
+            <p>🚗 Скорость: {raceData.speed}</p>
+            <p>🏆 Очки: {raceData.score}</p>
           </div>
           <div className="absolute top-4 right-4">
             <Button onClick={() => setCurrentGame('menu')} variant="secondary" size="sm">
@@ -353,13 +446,55 @@ const Index = () => {
             </Button>
           </div>
           
-          <div className="w-full h-full relative overflow-hidden flex items-center justify-center">
-            <div className="text-white text-center">
-              <h2 className="text-4xl font-bold mb-4">🏁 Гонка началась!</h2>
-              <p className="text-xl">Уворачивайтесь от препятствий!</p>
-              <div className="mt-8">
-                <div className="w-20 h-20 bg-blue-500 rounded mx-auto animate-bounce">
-                  🚛
+          <div className="w-full h-full relative overflow-hidden">
+            {/* Дорога */}
+            <div className="absolute inset-0 bg-gray-700">
+              {/* Разметка дороги */}
+              {Array.from({ length: 10 }).map((_, i) => (
+                <div 
+                  key={i}
+                  className="absolute w-1 h-12 bg-yellow-400 left-1/2 transform -translate-x-1/2 animate-pulse"
+                  style={{
+                    top: `${i * 10}%`,
+                    animationDelay: `${i * 0.2}s`
+                  }}
+                />
+              ))}
+            </div>
+            
+            {/* Препятствия */}
+            {raceData.obstacles.map((obstacle) => (
+              <div
+                key={obstacle.id}
+                className="absolute text-4xl animate-bounce"
+                style={{
+                  left: `${obstacle.x}px`,
+                  top: `${obstacle.y}px`,
+                }}
+              >
+                🚧
+              </div>
+            ))}
+            
+            {/* Игрок */}
+            <div 
+              className="absolute text-6xl transition-all duration-100 drop-shadow-lg"
+              style={{
+                left: `${raceData.playerX}px`,
+                top: `${raceData.playerY}px`,
+              }}
+            >
+              🏎️
+            </div>
+            
+            {/* Инструкции */}
+            <div className="absolute bottom-10 left-1/2 transform -translate-x-1/2 text-center">
+              <div className="bg-black/70 text-white rounded-lg p-4">
+                <p className="font-bold mb-2">🏁 Управление</p>
+                <div className="text-sm space-y-1">
+                  <p>A/D или ← → - влево/вправо</p>
+                  <p>W/S или ↑ ↓ - вверх/вниз</p>
+                  <p>Уворачивайтесь от препятствий! 🚧</p>
                 </div>
               </div>
             </div>
@@ -370,11 +505,12 @@ const Index = () => {
 
     if (currentGame === 'pvp') {
       return (
-        <div className="fixed inset-0 bg-red-400 z-50">
-          <div className="absolute top-4 left-4 text-white font-bold">
-            <p>Убийства: {pvpData.kills}</p>
-            <p>Патроны: {pvpData.ammo}</p>
-            <p>Оружие: {inventory.activeWeapon}</p>
+        <div className="fixed inset-0 bg-gradient-to-br from-red-600 to-orange-500 z-50">
+          <div className="absolute top-4 left-4 text-white font-bold bg-black/50 rounded-lg p-3">
+            <p>🎯 Убийства: {pvpData.kills}/10</p>
+            <p>🔫 Патроны: {pvpData.ammo}</p>
+            <p>⚔️ Оружие: {inventory.activeWeapon || 'Базовое'}</p>
+            <p>⏱️ Время: {Math.floor(pvpData.gameTime)}с</p>
           </div>
           <div className="absolute top-4 right-4">
             <Button onClick={() => setCurrentGame('menu')} variant="secondary" size="sm">
@@ -382,16 +518,72 @@ const Index = () => {
             </Button>
           </div>
           
-          <div className="w-full h-full relative overflow-hidden flex items-center justify-center">
-            <div className="text-white text-center">
-              <h2 className="text-4xl font-bold mb-4">⚔️ PvP Арена!</h2>
-              <p className="text-xl">Уничтожайте врагов!</p>
-              <div className="mt-8 grid grid-cols-3 gap-4">
-                {pvpData.chickens.map((chicken) => (
-                  <div key={chicken.id} className="w-16 h-16 bg-yellow-400 rounded-full flex items-center justify-center animate-pulse cursor-crosshair">
-                    🐔
-                  </div>
-                ))}
+          <div className="w-full h-full relative overflow-hidden">
+            {/* Фон арены */}
+            <div className="absolute inset-0">
+              {/* Декорации */}
+              {Array.from({ length: 15 }).map((_, i) => (
+                <div
+                  key={i}
+                  className="absolute text-3xl opacity-40"
+                  style={{
+                    left: `${Math.random() * 90}%`,
+                    top: `${Math.random() * 90}%`,
+                  }}
+                >
+                  {['🗿', '🌋', '💀', '⚔️'][Math.floor(Math.random() * 4)]}
+                </div>
+              ))}
+            </div>
+            
+            {/* Враги */}
+            {pvpData.chickens.map((chicken) => (
+              <div
+                key={chicken.id}
+                className="absolute text-4xl cursor-crosshair hover:scale-125 transition-transform animate-bounce"
+                style={{
+                  left: `${chicken.x}px`,
+                  top: `${chicken.y}px`,
+                }}
+                onClick={() => {
+                  if (pvpData.ammo > 0) {
+                    setPvpData(prev => ({
+                      ...prev,
+                      kills: prev.kills + 1,
+                      ammo: prev.ammo - 1,
+                      chickens: prev.chickens.filter(c => c.id !== chicken.id).concat([
+                        {
+                          id: Date.now(),
+                          x: Math.random() * (window.innerWidth - 100) + 50,
+                          y: Math.random() * (window.innerHeight - 200) + 100,
+                          speed: Math.random() * 2 + 1,
+                          direction: Math.random() > 0.5 ? 1 : -1
+                        }
+                      ])
+                    }));
+                    setCoins(prev => prev + 10);
+                    playSound('hit');
+                  }
+                }}
+              >
+                🐔
+              </div>
+            ))}
+            
+            {/* Прицел */}
+            <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-4xl pointer-events-none animate-pulse">
+              🎯
+            </div>
+            
+            {/* Инструкции */}
+            <div className="absolute bottom-10 left-1/2 transform -translate-x-1/2 text-center">
+              <div className="bg-black/70 text-white rounded-lg p-4">
+                <p className="font-bold mb-2">⚔️ Стреляйте по курицам!</p>
+                <div className="text-sm space-y-1">
+                  <p>Клик по курице = выстрел</p>
+                  <p>За убийство +10 монет</p>
+                  <p>Цель: 10 убийств</p>
+                </div>
               </div>
             </div>
           </div>
