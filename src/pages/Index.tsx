@@ -1057,7 +1057,7 @@ const Index = () => {
         <div className="container mx-auto px-4 text-center">
           <div className="flex items-center justify-center space-x-2 mb-4">
             <span className="text-2xl">🐔</span>
-            <span className="text-xl md:text-2xl font-bold">ПоеХали Игры</span>
+            <span className="text-xl md:text-2xl font-bold text-red-700">Игры</span>
           </div>
           <p className="text-gray-300 mb-4">Самые захватывающие игры в одном месте</p>
           <p className="text-xs text-gray-500 mt-2">Поддержка мобильных устройств • Реальный геймплей • {playersOnline} игроков онлайн</p>
