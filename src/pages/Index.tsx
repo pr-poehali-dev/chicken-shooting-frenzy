@@ -702,7 +702,7 @@ const Index = () => {
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
           <div className="flex items-center space-x-2 md:space-x-4">
             <div className="w-10 h-10 md:w-12 md:h-12 bg-game-orange rounded-full flex items-center justify-center animate-bounce-in">
-              <span className="text-xl md:text-2xl font-bold text-white">🐔</span>
+              <span className="курица красная страх крутость">🐔</span>
             </div>
             <div>
               <h1 className="text-xl md:text-2xl font-extrabold text-red-800 text-center">red gan</h1>
