@@ -27,7 +27,7 @@ const Index = () => {
   });
 
   // Состояния игр
-  const [currentGame, setCurrentGame] = useState<'menu' | 'race' | 'pvp' | 'sandbox'>('menu');
+  const [currentGame, setCurrentGame] = useState<'menu' | 'race' | 'pvp' | 'sandbox' | 'multiplayer' | 'login'>('menu');
   const [gameStats, setGameStats] = useState({ hp: 50, timeLeft: 60, score: 0 });
   
   // Состояния песочницы
@@ -66,6 +66,31 @@ const Index = () => {
     activeWeapon: 'pistol',
     activeVehicle: 'bike',
     items: [] as number[]
+  });
+
+  // Состояния мультиплеера
+  const [multiplayerData, setMultiplayerData] = useState({
+    playerX: 400,
+    playerY: 300,
+    isPlaying: false,
+    spawnedObjects: [] as Array<{id: number, type: string, x: number, y: number, emoji: string}>,
+    bullets: [] as Array<{id: number, x: number, y: number, direction: number}>,
+    onlinePlayers: [] as Array<{id: string, name: string, x: number, y: number, emoji: string}>,
+    currentRoom: '',
+    selectedSpawnType: 'tree',
+    isConnected: false
+  });
+
+  // Система аккаунтов
+  const [accountData, setAccountData] = useState({
+    username: '',
+    level: 1,
+    xp: 0,
+    totalKills: 0,
+    gamesWon: 0,
+    isLoggedIn: false,
+    loginForm: { username: '', password: '' },
+    registerForm: { username: '', email: '', password: '' }
   });
 
   // Статистика
@@ -298,6 +323,109 @@ const Index = () => {
     return () => window.removeEventListener('keydown', handleKeyPress);
   }, [currentGame, sandboxData.isPlaying]);
 
+  // Управление для мультиплеера
+  useEffect(() => {
+    if (currentGame !== 'multiplayer' || !multiplayerData.isPlaying) return;
+
+    const handleKeyPress = (e: KeyboardEvent) => {
+      const moveSpeed = 20;
+      setMultiplayerData(prev => {
+        let newX = prev.playerX;
+        let newY = prev.playerY;
+
+        switch (e.key.toLowerCase()) {
+          case 'w':
+          case 'arrowup':
+            newY = Math.max(0, prev.playerY - moveSpeed);
+            break;
+          case 's':
+          case 'arrowdown':
+            newY = Math.min(window.innerHeight - 60, prev.playerY + moveSpeed);
+            break;
+          case 'a':
+          case 'arrowleft':
+            newX = Math.max(0, prev.playerX - moveSpeed);
+            break;
+          case 'd':
+          case 'arrowright':
+            newX = Math.min(window.innerWidth - 60, prev.playerX + moveSpeed);
+            break;
+          case ' ':
+          case 'space':
+            e.preventDefault();
+            // Стрельба на пробел
+            const newBullet = {
+              id: Date.now(),
+              x: prev.playerX + 25,
+              y: prev.playerY + 25,
+              direction: 0
+            };
+            return {
+              ...prev,
+              playerX: newX,
+              playerY: newY,
+              bullets: [...prev.bullets, newBullet]
+            };
+        }
+
+        return {
+          ...prev,
+          playerX: newX,
+          playerY: newY
+        };
+      });
+    };
+
+    window.addEventListener('keydown', handleKeyPress);
+    return () => window.removeEventListener('keydown', handleKeyPress);
+  }, [currentGame, multiplayerData.isPlaying]);
+
+  // Сохранение прогресса
+  useEffect(() => {
+    const saveProgress = () => {
+      if (accountData.isLoggedIn) {
+        const progressData = {
+          username: accountData.username,
+          level: accountData.level,
+          xp: accountData.xp,
+          totalKills: accountData.totalKills,
+          gamesWon: accountData.gamesWon,
+          coins: coins,
+          inventory: inventory,
+          stats: stats,
+          timestamp: Date.now()
+        };
+        localStorage.setItem(`redGan_progress_${accountData.username}`, JSON.stringify(progressData));
+      }
+    };
+
+    // Автосохранение каждые 10 секунд
+    const saveInterval = setInterval(saveProgress, 10000);
+    return () => clearInterval(saveInterval);
+  }, [accountData, coins, inventory, stats]);
+
+  // Загрузка прогресса при входе
+  const loadProgress = (username: string) => {
+    const savedProgress = localStorage.getItem(`redGan_progress_${username}`);
+    if (savedProgress) {
+      try {
+        const data = JSON.parse(savedProgress);
+        setAccountData(prev => ({
+          ...prev,
+          level: data.level || 1,
+          xp: data.xp || 0,
+          totalKills: data.totalKills || 0,
+          gamesWon: data.gamesWon || 0
+        }));
+        setCoins(data.coins || 100);
+        setInventory(data.inventory || { activeWeapon: 'pistol', activeVehicle: 'bike', items: [] });
+        setStats(data.stats || { gamesPlayed: 0, totalKills: 0, bestTime: 0, totalCoins: 0 });
+      } catch (error) {
+        console.log('Ошибка загрузки прогресса:', error);
+      }
+    }
+  };
+
   // Управление для гонок
   useEffect(() => {
     if (currentGame !== 'race' || !raceData.isPlaying) return;
@@ -390,7 +518,7 @@ const Index = () => {
     return () => clearInterval(gameInterval);
   }, [currentGame, raceData.isPlaying]);
 
-  const startGame = (gameType: 'race' | 'pvp' | 'sandbox') => {
+  const startGame = (gameType: 'race' | 'pvp' | 'sandbox' | 'multiplayer') => {
     playSound('click');
     setCurrentGame(gameType);
     setStats(prev => ({ ...prev, gamesPlayed: prev.gamesPlayed + 1 }));
@@ -422,6 +550,14 @@ const Index = () => {
       setSandboxData(prev => ({
         ...prev,
         isPlaying: true
+      }));
+    } else if (gameType === 'multiplayer') {
+      setMultiplayerData(prev => ({
+        ...prev,
+        isPlaying: true,
+        isConnected: true,
+        spawnedObjects: [],
+        bullets: []
       }));
     }
   };
@@ -690,6 +826,258 @@ const Index = () => {
       );
     }
 
+    if (currentGame === 'login') {
+      return (
+        <div className="fixed inset-0 bg-gradient-to-br from-blue-600 to-purple-700 z-50 flex items-center justify-center">
+          <div className="bg-white rounded-lg p-8 max-w-md w-full mx-4">
+            <div className="text-center mb-6">
+              <h2 className="text-3xl font-bold text-gray-800 mb-2">🎮 Вход в аккаунт</h2>
+              <p className="text-gray-600">Войдите, чтобы играть в мультиплеере</p>
+            </div>
+            
+            <div className="space-y-4">
+              <Input
+                placeholder="Имя пользователя"
+                value={accountData.loginForm.username}
+                onChange={(e) => setAccountData(prev => ({
+                  ...prev,
+                  loginForm: { ...prev.loginForm, username: e.target.value }
+                }))}
+              />
+              <Input
+                type="password"
+                placeholder="Пароль"
+                value={accountData.loginForm.password}
+                onChange={(e) => setAccountData(prev => ({
+                  ...prev,
+                  loginForm: { ...prev.loginForm, password: e.target.value }
+                }))}
+              />
+              
+              <div className="space-y-3">
+                <Button 
+                  onClick={() => {
+                    const username = accountData.loginForm.username || 'Игрок';
+                    loadProgress(username);
+                    setAccountData(prev => ({
+                      ...prev,
+                      isLoggedIn: true,
+                      username: username
+                    }));
+                    setCurrentGame('multiplayer');
+                  }}
+                  className="w-full bg-green-500 hover:bg-green-600"
+                >
+                  Войти и играть
+                </Button>
+                
+                <Button 
+                  onClick={() => setCurrentGame('menu')} 
+                  variant="outline" 
+                  className="w-full"
+                >
+                  Назад в меню
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    if (currentGame === 'multiplayer') {
+      return (
+        <div className="fixed inset-0 bg-gray-300 z-50">
+          {/* UI панель */}
+          <div className="absolute top-4 left-4 bg-black/80 text-white p-4 rounded-lg">
+            <p className="font-bold">👤 {accountData.username}</p>
+            <p>⭐ Уровень: {accountData.level}</p>
+            <p>🎯 Опыт: {accountData.xp % 100}/100</p>
+            <p>🌐 Комната: {multiplayerData.currentRoom || 'Основная'}</p>
+            <p>👥 Игроков: {multiplayerData.onlinePlayers.length + 1}</p>
+            <div className="mt-2 w-full bg-gray-600 rounded-full h-2">
+              <div 
+                className="bg-green-500 h-2 rounded-full transition-all duration-300" 
+                style={{ width: `${(accountData.xp % 100)}%` }}
+              ></div>
+            </div>
+          </div>
+
+          {/* Кнопки управления */}
+          <div className="absolute top-4 right-4 space-y-2">
+            <Button onClick={() => setCurrentGame('menu')} variant="secondary" size="sm">
+              Выход
+            </Button>
+          </div>
+
+          {/* Панель спавна объектов */}
+          <div className="absolute bottom-4 left-4 bg-black/80 text-white p-4 rounded-lg">
+            <p className="font-bold mb-2">🛠️ Спавн объектов:</p>
+            <div className="grid grid-cols-3 gap-2 mb-3">
+              {['🌳', '🗿', '🏠', '🚗', '⭐', '💎'].map((emoji, index) => (
+                <button
+                  key={index}
+                  onClick={() => setMultiplayerData(prev => ({ ...prev, selectedSpawnType: ['tree', 'rock', 'house', 'car', 'star', 'gem'][index] }))}
+                  className={`w-10 h-10 rounded text-xl ${
+                    multiplayerData.selectedSpawnType === ['tree', 'rock', 'house', 'car', 'star', 'gem'][index] 
+                      ? 'bg-blue-500' : 'bg-gray-600 hover:bg-gray-500'
+                  }`}
+                >
+                  {emoji}
+                </button>
+              ))}
+            </div>
+            <p className="text-sm text-gray-300">Кликните на карту, чтобы поставить объект</p>
+          </div>
+
+          {/* Кнопки действий */}
+          <div className="absolute bottom-4 right-4 space-x-2">
+            <Button 
+              onClick={() => {
+                const newBullet = {
+                  id: Date.now(),
+                  x: multiplayerData.playerX + 25,
+                  y: multiplayerData.playerY + 25,
+                  direction: 0
+                };
+                setMultiplayerData(prev => ({
+                  ...prev,
+                  bullets: [...prev.bullets, newBullet]
+                }));
+                
+                // Добавляем опыт за выстрел
+                setAccountData(prev => {
+                  const newXp = prev.xp + 2;
+                  const newLevel = Math.floor(newXp / 100) + 1;
+                  return {
+                    ...prev,
+                    xp: newXp,
+                    level: newLevel,
+                    totalKills: prev.totalKills + 1
+                  };
+                });
+              }}
+              className="bg-red-500 hover:bg-red-600"
+            >
+              🔫 Стрелять
+            </Button>
+          </div>
+
+          {/* Игровая область */}
+          <div 
+            className="w-full h-full relative cursor-crosshair"
+            onClick={(e) => {
+              const rect = e.currentTarget.getBoundingClientRect();
+              const x = e.clientX - rect.left;
+              const y = e.clientY - rect.top;
+              
+              const emojis = ['🌳', '🗿', '🏠', '🚗', '⭐', '💎'];
+              const selectedEmoji = emojis[['tree', 'rock', 'house', 'car', 'star', 'gem'].indexOf(multiplayerData.selectedSpawnType)];
+              
+              setMultiplayerData(prev => ({
+                ...prev,
+                spawnedObjects: [...prev.spawnedObjects, {
+                  id: Date.now(),
+                  type: prev.selectedSpawnType,
+                  x: x - 25,
+                  y: y - 25,
+                  emoji: selectedEmoji
+                }]
+              }));
+              
+              // Добавляем опыт за размещение объекта
+              setAccountData(prev => {
+                const newXp = prev.xp + 5;
+                const newLevel = Math.floor(newXp / 100) + 1;
+                return {
+                  ...prev,
+                  xp: newXp,
+                  level: newLevel
+                };
+              });
+            }}
+          >
+            {/* Объекты на карте */}
+            {multiplayerData.spawnedObjects.map((obj) => (
+              <div
+                key={obj.id}
+                className="absolute text-4xl pointer-events-none"
+                style={{ left: `${obj.x}px`, top: `${obj.y}px` }}
+              >
+                {obj.emoji}
+              </div>
+            ))}
+
+            {/* Пули */}
+            {multiplayerData.bullets.map((bullet) => (
+              <div
+                key={bullet.id}
+                className="absolute w-2 h-2 bg-yellow-400 rounded-full"
+                style={{ left: `${bullet.x}px`, top: `${bullet.y}px` }}
+              />
+            ))}
+
+            {/* Игрок */}
+            <div 
+              className="absolute text-5xl transition-all duration-100"
+              style={{ left: `${multiplayerData.playerX}px`, top: `${multiplayerData.playerY}px` }}
+            >
+              🤖
+            </div>
+
+            {/* Другие игроки */}
+            {multiplayerData.onlinePlayers.map((player) => (
+              <div
+                key={player.id}
+                className="absolute transition-all duration-200"
+                style={{ left: `${player.x}px`, top: `${player.y}px` }}
+              >
+                <div className="text-4xl">{player.emoji}</div>
+                <div className="text-xs text-center bg-black/50 text-white rounded px-1">
+                  {player.name}
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Управление движением */}
+          <div className="absolute bottom-20 left-1/2 transform -translate-x-1/2 md:hidden">
+            <div className="grid grid-cols-3 gap-2">
+              <div></div>
+              <Button 
+                onClick={() => setMultiplayerData(prev => ({ ...prev, playerY: Math.max(0, prev.playerY - 20) }))}
+                className="w-12 h-12"
+              >
+                ⬆️
+              </Button>
+              <div></div>
+              <Button 
+                onClick={() => setMultiplayerData(prev => ({ ...prev, playerX: Math.max(0, prev.playerX - 20) }))}
+                className="w-12 h-12"
+              >
+                ⬅️
+              </Button>
+              <div></div>
+              <Button 
+                onClick={() => setMultiplayerData(prev => ({ ...prev, playerX: Math.min(window.innerWidth - 60, prev.playerX + 20) }))}
+                className="w-12 h-12"
+              >
+                ➡️
+              </Button>
+              <div></div>
+              <Button 
+                onClick={() => setMultiplayerData(prev => ({ ...prev, playerY: Math.min(window.innerHeight - 60, prev.playerY + 20) }))}
+                className="w-12 h-12"
+              >
+                ⬇️
+              </Button>
+              <div></div>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
     return null;
   };
 
@@ -803,7 +1191,30 @@ const Index = () => {
             Выберите режим и начните играть прямо сейчас
           </p>
           
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6 max-w-4xl mx-auto">
+          {/* Прогресс аккаунта */}
+          {accountData.isLoggedIn && (
+            <div className="bg-white/80 backdrop-blur-sm rounded-lg p-4 max-w-md mx-auto mb-6">
+              <div className="text-center">
+                <h3 className="font-bold text-gray-800">👤 {accountData.username}</h3>
+                <div className="flex justify-center space-x-4 mt-2 text-sm">
+                  <span>⭐ Ур. {accountData.level}</span>
+                  <span>🎯 {accountData.totalKills} убийств</span>
+                  <span>🏆 {accountData.gamesWon} побед</span>
+                </div>
+                <div className="mt-2">
+                  <div className="text-xs text-gray-600">Опыт: {accountData.xp % 100}/100</div>
+                  <div className="w-full bg-gray-200 rounded-full h-2 mt-1">
+                    <div 
+                      className="bg-blue-500 h-2 rounded-full transition-all duration-300" 
+                      style={{ width: `${(accountData.xp % 100)}%` }}
+                    ></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 max-w-6xl mx-auto">
             <Card className="cursor-pointer hover:shadow-lg transition-all duration-300 transform hover:-translate-y-1 border-l-4 border-l-red-500">
               <CardContent className="p-4 md:p-6 text-center">
                 <div className="text-4xl md:text-6xl mb-2 md:mb-4">🏁</div>
@@ -870,6 +1281,30 @@ const Index = () => {
                   size={isMobile ? "sm" : "default"}
                 >
                   Исследовать {sandboxMaps.find(m => m.id === sandboxData.selectedMap)?.emoji}
+                </Button>
+              </CardContent>
+            </Card>
+
+            <Card className="cursor-pointer hover:shadow-lg transition-all duration-300 transform hover:-translate-y-1 border-l-4 border-l-blue-500">
+              <CardContent className="p-4 md:p-6 text-center">
+                <div className="text-4xl md:text-6xl mb-2 md:mb-4">🌐</div>
+                <h3 className="text-lg md:text-xl font-bold mb-2">Мультиплеер</h3>
+                <p className="text-sm md:text-base text-gray-600 mb-4">Играйте с друзьями на пустой карте</p>
+                
+                <div className="mb-3">
+                  <div className="flex items-center justify-center space-x-2 text-sm">
+                    <span className={`w-2 h-2 rounded-full ${multiplayerData.isConnected ? 'bg-green-500' : 'bg-red-500'}`}></span>
+                    <span>{multiplayerData.isConnected ? 'Подключен' : 'Офлайн'}</span>
+                  </div>
+                  <p className="text-xs text-gray-500 mt-1">Игроков онлайн: {playersOnline}</p>
+                </div>
+
+                <Button 
+                  onClick={() => accountData.isLoggedIn ? startGame('multiplayer') : setCurrentGame('login')} 
+                  className="w-full bg-blue-500 hover:bg-blue-600" 
+                  size={isMobile ? "sm" : "default"}
+                >
+                  {accountData.isLoggedIn ? 'Играть онлайн' : 'Войти в аккаунт'}
                 </Button>
               </CardContent>
             </Card>
