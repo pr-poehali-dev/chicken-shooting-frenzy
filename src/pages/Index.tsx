@@ -19,12 +19,8 @@ const Index = () => {
   // Авторизация
   const [user, setUser] = useState<any>(null);
   const [showAuth, setShowAuth] = useState(false);
-  const [showRegister, setShowRegister] = useState(false);
-  const [registerData, setRegisterData] = useState({
-    username: '',
-    email: '',
-    password: ''
-  });
+  const [showNicknameInput, setShowNicknameInput] = useState(false);
+  const [nicknameInput, setNicknameInput] = useState('');
 
   // Состояния игр
   const [currentGame, setCurrentGame] = useState<'menu' | 'race' | 'pvp' | 'sandbox' | 'multiplayer' | 'login'>('menu');
@@ -72,11 +68,12 @@ const Index = () => {
   const [multiplayerData, setMultiplayerData] = useState({
     playerX: 400,
     playerY: 300,
+    playerId: `player_${Math.random().toString(36).substr(2, 9)}`,
     isPlaying: false,
-    spawnedObjects: [] as Array<{id: number, type: string, x: number, y: number, emoji: string}>,
-    bullets: [] as Array<{id: number, x: number, y: number, direction: number}>,
-    onlinePlayers: [] as Array<{id: string, name: string, x: number, y: number, emoji: string}>,
-    currentRoom: '',
+    spawnedObjects: [] as Array<{id: string, type: string, x: number, y: number, emoji: string}>,
+    bullets: [] as Array<{id: string, x: number, y: number, direction: number}>,
+    onlinePlayers: [] as Array<{id: string, nickname: string, x: number, y: number, emoji: string}>,
+    currentRoom: 'main',
     selectedSpawnType: 'tree',
     isConnected: false
   });
@@ -147,6 +144,84 @@ const Index = () => {
       hit: '🎯'
     };
     console.log(`Звук: ${sounds[type]} ${type}`);
+  };
+
+  // Мультиплеер API
+  const MULTIPLAYER_URL = 'https://functions.poehali.dev/51d56b9b-a81f-4756-b894-cdfcc4497f8e';
+  
+  const multiplayerAPI = {
+    async joinRoom(playerId: string, nickname: string, room: string = 'main') {
+      const response = await fetch(MULTIPLAYER_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'join',
+          playerId,
+          nickname,
+          room
+        })
+      });
+      return response.json();
+    },
+
+    async movePlayer(playerId: string, x: number, y: number, room: string = 'main') {
+      const response = await fetch(MULTIPLAYER_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'move',
+          playerId,
+          x,
+          y,
+          room
+        })
+      });
+      return response.json();
+    },
+
+    async spawnObject(playerId: string, objectType: string, x: number, y: number, room: string = 'main') {
+      const response = await fetch(MULTIPLAYER_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'spawn_object',
+          playerId,
+          object_type: objectType,
+          x,
+          y,
+          room
+        })
+      });
+      return response.json();
+    },
+
+    async shoot(playerId: string, x: number, y: number, direction: number, room: string = 'main') {
+      const response = await fetch(MULTIPLAYER_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'shoot',
+          playerId,
+          x,
+          y,
+          direction,
+          room
+        })
+      });
+      return response.json();
+    },
+
+    async getState(room: string = 'main') {
+      const response = await fetch(MULTIPLAYER_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'get_state',
+          room
+        })
+      });
+      return response.json();
+    }
   };
 
   // Магазин товаров
@@ -467,6 +542,90 @@ const Index = () => {
     return () => window.removeEventListener('keydown', handleKeyPress);
   }, [currentGame, raceData.isPlaying]);
 
+  // Управление для мультиплеера
+  useEffect(() => {
+    if (currentGame !== 'multiplayer' || !multiplayerData.isPlaying) return;
+
+    const handleKeyPress = (e: KeyboardEvent) => {
+      const moveSpeed = 20;
+      
+      setMultiplayerData(prev => {
+        let newX = prev.playerX;
+        let newY = prev.playerY;
+
+        switch (e.key.toLowerCase()) {
+          case 'w':
+          case 'arrowup':
+            newY = Math.max(0, prev.playerY - moveSpeed);
+            break;
+          case 's':
+          case 'arrowdown':
+            newY = Math.min(window.innerHeight - 100, prev.playerY + moveSpeed);
+            break;
+          case 'a':
+          case 'arrowleft':
+            newX = Math.max(0, prev.playerX - moveSpeed);
+            break;
+          case 'd':
+          case 'arrowright':
+            newX = Math.min(window.innerWidth - 100, prev.playerX + moveSpeed);
+            break;
+          case 'r':
+            // Спавн выбранного объекта на сервере
+            multiplayerAPI.spawnObject(prev.playerId, prev.selectedSpawnType, prev.playerX, prev.playerY)
+              .then(response => {
+                if (response.success && response.game_state) {
+                  setMultiplayerData(current => ({
+                    ...current,
+                    spawnedObjects: response.game_state.objects,
+                    onlinePlayers: response.game_state.players.filter((p: any) => p.id !== current.playerId)
+                  }));
+                }
+              })
+              .catch(error => console.error('Ошибка спавна объекта:', error));
+            return prev;
+            
+          case ' ':
+          case 'space':
+            // Стрельба на сервере
+            multiplayerAPI.shoot(prev.playerId, prev.playerX + 25, prev.playerY + 25, 0)
+              .then(response => {
+                if (response.success && response.game_state) {
+                  setMultiplayerData(current => ({
+                    ...current,
+                    bullets: response.game_state.bullets,
+                    onlinePlayers: response.game_state.players.filter((p: any) => p.id !== current.playerId)
+                  }));
+                }
+              })
+              .catch(error => console.error('Ошибка стрельбы:', error));
+            return prev;
+        }
+
+        // Обновляем позицию на сервере
+        if (newX !== prev.playerX || newY !== prev.playerY) {
+          multiplayerAPI.movePlayer(prev.playerId, newX, newY)
+            .then(response => {
+              if (response.success && response.game_state) {
+                setMultiplayerData(current => ({
+                  ...current,
+                  onlinePlayers: response.game_state.players.filter((p: any) => p.id !== current.playerId),
+                  spawnedObjects: response.game_state.objects,
+                  bullets: response.game_state.bullets
+                }));
+              }
+            })
+            .catch(error => console.error('Ошибка движения:', error));
+        }
+
+        return { ...prev, playerX: newX, playerY: newY };
+      });
+    };
+
+    window.addEventListener('keydown', handleKeyPress);
+    return () => window.removeEventListener('keydown', handleKeyPress);
+  }, [currentGame, multiplayerData.isPlaying]);
+
   // Генерация препятствий и игровая логика гонок
   useEffect(() => {
     if (currentGame !== 'race' || !raceData.isPlaying) return;
@@ -518,6 +677,31 @@ const Index = () => {
     return () => clearInterval(gameInterval);
   }, [currentGame, raceData.isPlaying]);
 
+  // Обновление состояния мультиплеера
+  useEffect(() => {
+    if (currentGame !== 'multiplayer' || !multiplayerData.isPlaying || !multiplayerData.isConnected) return;
+
+    const syncInterval = setInterval(() => {
+      multiplayerAPI.getState('main')
+        .then(response => {
+          if (response.success && response.game_state) {
+            setMultiplayerData(prev => ({
+              ...prev,
+              onlinePlayers: response.game_state.players.filter((p: any) => p.id !== prev.playerId),
+              spawnedObjects: response.game_state.objects,
+              bullets: response.game_state.bullets
+            }));
+          }
+        })
+        .catch(error => {
+          console.error('Ошибка синхронизации:', error);
+          setMultiplayerData(prev => ({ ...prev, isConnected: false }));
+        });
+    }, 1000); // Обновляем каждую секунду
+
+    return () => clearInterval(syncInterval);
+  }, [currentGame, multiplayerData.isPlaying, multiplayerData.isConnected]);
+
   const startGame = (gameType: 'race' | 'pvp' | 'sandbox' | 'multiplayer') => {
     playSound('click');
     setCurrentGame(gameType);
@@ -559,6 +743,28 @@ const Index = () => {
         spawnedObjects: [],
         bullets: []
       }));
+      
+      // Подключаемся к серверу
+      multiplayerAPI.joinRoom(multiplayerData.playerId, accountData.username, 'main')
+        .then(response => {
+          if (response.success) {
+            console.log('Подключились к мультиплееру!', response);
+            // Обновляем состояние игры с сервера
+            if (response.game_state) {
+              setMultiplayerData(prev => ({
+                ...prev,
+                onlinePlayers: response.game_state.players.filter((p: any) => p.id !== prev.playerId),
+                spawnedObjects: response.game_state.objects,
+                bullets: response.game_state.bullets,
+                isConnected: true
+              }));
+            }
+          }
+        })
+        .catch(error => {
+          console.error('Ошибка подключения:', error);
+          setMultiplayerData(prev => ({ ...prev, isConnected: false }));
+        });
     }
   };
 
@@ -927,7 +1133,11 @@ const Index = () => {
                 </button>
               ))}
             </div>
-            <p className="text-sm text-gray-300">Кликните на карту, чтобы поставить объект</p>
+            <div className="text-sm text-gray-300 space-y-1">
+              <p>R - поставить объект</p>
+              <p>Пробел - стрелять</p>
+              <p>WASD - движение</p>
+            </div>
           </div>
 
           {/* Кнопки действий */}
@@ -1034,7 +1244,7 @@ const Index = () => {
               >
                 <div className="text-4xl">{player.emoji}</div>
                 <div className="text-xs text-center bg-black/50 text-white rounded px-1">
-                  {player.name}
+                  {player.nickname}
                 </div>
               </div>
             ))}
@@ -1116,8 +1326,8 @@ const Index = () => {
                 <Button onClick={() => setShowAuth(true)} variant="outline" size={isMobile ? "sm" : "default"}>
                   Войти
                 </Button>
-                <Button onClick={() => setShowRegister(true)} size={isMobile ? "sm" : "default"}>
-                  Регистрация
+                <Button onClick={() => setShowNicknameInput(true)} size={isMobile ? "sm" : "default"}>
+                  Мультиплеер
                 </Button>
               </div>
             )}
@@ -1125,36 +1335,49 @@ const Index = () => {
         </div>
       </header>
 
-      {/* Диалог регистрации */}
-      <Dialog open={showRegister} onOpenChange={setShowRegister}>
+      {/* Диалог ввода ника */}
+      <Dialog open={showNicknameInput} onOpenChange={setShowNicknameInput}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>🎮 Регистрация</DialogTitle>
+            <DialogTitle>🌐 Мультиплеер</DialogTitle>
             <DialogDescription>
-              Создайте аккаунт, чтобы сохранять прогресс
+              Введите ваш игровой ник для подключения
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <Input
-              placeholder="Имя пользователя"
-              value={registerData.username}
-              onChange={(e) => setRegisterData(prev => ({ ...prev, username: e.target.value }))}
+              placeholder="Введите ваш ник"
+              value={nicknameInput}
+              onChange={(e) => setNicknameInput(e.target.value)}
+              maxLength={20}
+              autoFocus
             />
-            <Input
-              type="email"
-              placeholder="Email"
-              value={registerData.email}
-              onChange={(e) => setRegisterData(prev => ({ ...prev, email: e.target.value }))}
-            />
-            <Input
-              type="password"
-              placeholder="Пароль"
-              value={registerData.password}
-              onChange={(e) => setRegisterData(prev => ({ ...prev, password: e.target.value }))}
-            />
-            <Button onClick={handleRegister} className="w-full">
-              Создать аккаунт
-            </Button>
+            <div className="space-y-2">
+              <Button 
+                onClick={() => {
+                  const nickname = nicknameInput.trim() || 'Игрок';
+                  setAccountData(prev => ({
+                    ...prev,
+                    isLoggedIn: true,
+                    username: nickname
+                  }));
+                  setShowNicknameInput(false);
+                  startGame('multiplayer');
+                }}
+                className="w-full bg-green-500 hover:bg-green-600"
+                disabled={!nicknameInput.trim()}
+              >
+                🚀 Подключиться
+              </Button>
+              
+              <Button 
+                onClick={() => setShowNicknameInput(false)} 
+                variant="outline" 
+                className="w-full"
+              >
+                Отмена
+              </Button>
+            </div>
           </div>
         </DialogContent>
       </Dialog>
@@ -1300,11 +1523,11 @@ const Index = () => {
                 </div>
 
                 <Button 
-                  onClick={() => accountData.isLoggedIn ? startGame('multiplayer') : setCurrentGame('login')} 
+                  onClick={() => accountData.isLoggedIn ? startGame('multiplayer') : setShowNicknameInput(true)} 
                   className="w-full bg-blue-500 hover:bg-blue-600" 
                   size={isMobile ? "sm" : "default"}
                 >
-                  {accountData.isLoggedIn ? 'Играть онлайн' : 'Войти в аккаунт'}
+                  {accountData.isLoggedIn ? 'Играть онлайн' : 'Ввести ник'}
                 </Button>
               </CardContent>
             </Card>
