@@ -32,7 +32,11 @@ const Index = () => {
     chickenX: 200,
     chickenY: 200,
     isPlaying: false,
-    direction: 'right' as 'up' | 'down' | 'left' | 'right'
+    direction: 'right' as 'up' | 'down' | 'left' | 'right',
+    backgroundObjects: Array.from({ length: 20 }, () => ({
+      x: Math.random() * 90,
+      y: Math.random() * 90
+    }))
   });
   
   // Состояния гонки
@@ -61,7 +65,8 @@ const Index = () => {
   const [inventory, setInventory] = useState({
     activeWeapon: 'pistol',
     activeVehicle: 'bike',
-    items: [] as number[]
+    items: [] as number[],
+    playerEmoji: '🤖'
   });
 
   // Состояния мультиплеера
@@ -719,13 +724,16 @@ const Index = () => {
     setStats(prev => ({ ...prev, gamesPlayed: prev.gamesPlayed + 1 }));
 
     if (gameType === 'race') {
-      setRaceData(prev => ({
-        ...prev,
-        isPlaying: true,
+      setRaceData({
+        playerX: 150,
+        playerY: 400,
+        obstacles: [],
         gameTime: 0,
+        isPlaying: true,
         lives: inventory.activeVehicle === 'monster-truck' ? 2 : 1,
-        speed: inventory.activeVehicle === 'racing-car' ? 3 : 2
-      }));
+        speed: inventory.activeVehicle === 'racing-car' ? 3 : 2,
+        score: 0
+      });
     } else if (gameType === 'pvp') {
       setPvpData(prev => ({
         ...prev,
@@ -1004,19 +1012,13 @@ const Index = () => {
           <div className="w-full h-full relative overflow-hidden">
             {/* Фоновые элементы */}
             <div className="absolute inset-0">
-              {Array.from({ length: 20 }, (_, i) => (
+              {sandboxData.backgroundObjects.map((obj, i) => (
                 <div
                   key={i}
-                  className={`absolute text-2xl opacity-60 ${
-                    currentMap.id === 'forest' ? '🌲' :
-                    currentMap.id === 'desert' ? '🌵' :
-                    currentMap.id === 'city' ? '🏢' :
-                    currentMap.id === 'space' ? '⭐' :
-                    '🐠'
-                  }`}
+                  className="absolute text-2xl opacity-60"
                   style={{
-                    left: `${Math.random() * 90}%`,
-                    top: `${Math.random() * 90}%`,
+                    left: `${obj.x}%`,
+                    top: `${obj.y}%`,
                   }}
                 >
                   {currentMap.id === 'forest' ? '🌲' :
@@ -1146,14 +1148,14 @@ const Index = () => {
           </div>
 
           {/* Панель спавна объектов */}
-          <div className="absolute bottom-4 left-4 bg-black/80 text-white p-4 rounded-lg">
+          <div className="absolute bottom-4 left-4 bg-black/80 text-white p-4 rounded-lg z-50">
             <p className="font-bold mb-2">🛠️ Спавн объектов:</p>
             <div className="grid grid-cols-3 gap-2 mb-3">
               {['🌳', '🗿', '🏠', '🚗', '⭐', '💎'].map((emoji, index) => (
                 <button
                   key={index}
                   onClick={() => setMultiplayerData(prev => ({ ...prev, selectedSpawnType: ['tree', 'rock', 'house', 'car', 'star', 'gem'][index] }))}
-                  className={`w-10 h-10 rounded text-xl ${
+                  className={`w-10 h-10 rounded text-xl z-50 ${
                     multiplayerData.selectedSpawnType === ['tree', 'rock', 'house', 'car', 'star', 'gem'][index] 
                       ? 'bg-blue-500' : 'bg-gray-600 hover:bg-gray-500'
                   }`}
