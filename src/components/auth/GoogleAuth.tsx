@@ -172,7 +172,7 @@ const GoogleAuth = ({ onLogin, onLogout, user, gameData }: GoogleAuthProps) => {
           </DialogHeader>
           
           <div className="space-y-4">
-            <div className="bg-gray-50 rounded-lg p-4">
+            <div className="rounded-lg p-4 bg-[#000000]">
               <h4 className="font-bold text-gray-800 mb-2">Информация</h4>
               <div className="space-y-1 text-sm">
                 <p><span className="font-medium">Имя:</span> {user.name}</p>
