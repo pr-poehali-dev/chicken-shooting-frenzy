@@ -15,6 +15,7 @@ const Index = () => {
   const [promoCode, setPromoCode] = useState('');
   const [usedPromoCodes, setUsedPromoCodes] = useState<string[]>([]);
   const [playersOnline, setPlayersOnline] = useState(0);
+  const [devMode, setDevMode] = useState(false);
   
   // Авторизация
   const [user, setUser] = useState<any>(null);
@@ -292,6 +293,67 @@ const Index = () => {
       rarity: 'Легендарная',
       description: 'Максимальная скорость в гонках',
       gameId: 'racing-car'
+    },
+    // Персонажи
+    {
+      id: 7,
+      name: 'Робот',
+      type: 'character',
+      price: 0,
+      emoji: '🤖',
+      rarity: 'Обычная',
+      description: 'Стандартный персонаж',
+      gameId: 'robot'
+    },
+    {
+      id: 8,
+      name: 'Пингвин',
+      type: 'character',
+      price: 200,
+      emoji: '🐧',
+      rarity: 'Редкая',
+      description: 'Крутой пингвин для мультиплеера',
+      gameId: 'penguin'
+    },
+    {
+      id: 9,
+      name: 'Космонавт',
+      type: 'character',
+      price: 300,
+      emoji: '👨‍🚀',
+      rarity: 'Эпическая',
+      description: 'Космический исследователь',
+      gameId: 'astronaut'
+    },
+    {
+      id: 10,
+      name: 'Ниндзя',
+      type: 'character',
+      price: 400,
+      emoji: '🥷',
+      rarity: 'Легендарная',
+      description: 'Быстрый и незаметный',
+      gameId: 'ninja'
+    },
+    {
+      id: 11,
+      name: 'Панда',
+      type: 'character',
+      price: 250,
+      emoji: '🐼',
+      rarity: 'Редкая',
+      description: 'Милая панда',
+      gameId: 'panda'
+    },
+    {
+      id: 12,
+      name: 'Единорог',
+      type: 'character',
+      price: 500,
+      emoji: '🦄',
+      rarity: 'Мифическая',
+      description: 'Легендарный единорог',
+      gameId: 'unicorn'
     }
   ];
 
@@ -331,8 +393,19 @@ const Index = () => {
 
   const handlePromoCode = () => {
     playSound('click');
-    const validCodes = ['пингвин', 'зайчик'];
     const code = promoCode.toLowerCase();
+    
+    // Секретный промокод разработчика
+    if (code === 'разработчик пингвин') {
+      setDevMode(true);
+      setCoins(999999);
+      setPromoCode('');
+      playSound('coin');
+      alert('🐧 Режим разработчика активирован! Добро пожаловать, разработчик!');
+      return;
+    }
+    
+    const validCodes = ['пингвин', 'зайчик'];
     
     if (usedPromoCodes.includes(code)) {
       playSound('error');
@@ -355,10 +428,21 @@ const Index = () => {
   const buyItem = (item: any) => {
     if (coins >= item.price) {
       setCoins(prev => prev - item.price);
-      setInventory(prev => ({
-        ...prev,
-        items: [...prev.items, item.id]
-      }));
+      
+      // Если это персонаж - сразу применяем
+      if (item.type === 'character') {
+        setInventory(prev => ({
+          ...prev,
+          items: [...prev.items, item.id],
+          playerEmoji: item.emoji
+        }));
+      } else {
+        setInventory(prev => ({
+          ...prev,
+          items: [...prev.items, item.id]
+        }));
+      }
+      
       playSound('coin');
       alert(`🎉 Куплено: ${item.name}!`);
     } else {
@@ -587,35 +671,55 @@ const Index = () => {
             newX = Math.min(window.innerWidth - 100, prev.playerX + moveSpeed);
             break;
           case 'r':
-            // Спавн выбранного объекта на сервере
+            e.preventDefault();
+            // Спавн объекта локально и на сервере
+            const emojiMap: any = {
+              'tree': '🌳',
+              'rock': '🗿', 
+              'house': '🏠',
+              'car': '🚗',
+              'star': '⭐',
+              'gem': '💎'
+            };
+            
+            const newObject = {
+              id: `obj_${Date.now()}`,
+              type: prev.selectedSpawnType,
+              emoji: emojiMap[prev.selectedSpawnType] || '📦',
+              x: prev.playerX,
+              y: prev.playerY
+            };
+            
+            // Отправляем на сервер
             multiplayerAPI.spawnObject(prev.playerId, prev.selectedSpawnType, prev.playerX, prev.playerY)
-              .then(response => {
-                if (response.success && response.game_state) {
-                  setMultiplayerData(current => ({
-                    ...current,
-                    spawnedObjects: response.game_state.objects,
-                    onlinePlayers: response.game_state.players.filter((p: any) => p.id !== current.playerId)
-                  }));
-                }
-              })
               .catch(error => console.error('Ошибка спавна объекта:', error));
-            return prev;
+            
+            // Добавляем локально
+            return {
+              ...prev,
+              spawnedObjects: [...prev.spawnedObjects, newObject]
+            };
             
           case ' ':
           case 'space':
-            // Стрельба на сервере
+            e.preventDefault();
+            // Стрельба локально
+            const newBullet = {
+              id: `bullet_${Date.now()}`,
+              x: prev.playerX + 25,
+              y: prev.playerY + 25,
+              direction: 0
+            };
+            
+            // Отправляем на сервер
             multiplayerAPI.shoot(prev.playerId, prev.playerX + 25, prev.playerY + 25, 0)
-              .then(response => {
-                if (response.success && response.game_state) {
-                  setMultiplayerData(current => ({
-                    ...current,
-                    bullets: response.game_state.bullets,
-                    onlinePlayers: response.game_state.players.filter((p: any) => p.id !== current.playerId)
-                  }));
-                }
-              })
               .catch(error => console.error('Ошибка стрельбы:', error));
-            return prev;
+            
+            // Добавляем локально
+            return {
+              ...prev,
+              bullets: [...prev.bullets, newBullet]
+            };
         }
 
         // Обновляем позицию на сервере
@@ -670,7 +774,7 @@ const Index = () => {
           Math.abs(obstacle.y - prev.playerY) < 50
         );
         
-        if (collision) {
+        if (collision && !devMode) {
           playSound('hit');
           const newLives = prev.lives - 1;
           if (newLives <= 0) {
@@ -698,14 +802,21 @@ const Index = () => {
     if (currentGame !== 'multiplayer' || !multiplayerData.isPlaying || !multiplayerData.isConnected) return;
 
     const syncInterval = setInterval(() => {
+      // Двигаем пули
+      setMultiplayerData(prev => ({
+        ...prev,
+        bullets: prev.bullets
+          .map(b => ({ ...b, y: b.y - 10 }))
+          .filter(b => b.y > 0 && b.y < window.innerHeight)
+      }));
+      
+      // Синхронизируемся с сервером
       multiplayerAPI.getState('main')
         .then(response => {
           if (response.success && response.game_state) {
             setMultiplayerData(prev => ({
               ...prev,
-              onlinePlayers: response.game_state.players.filter((p: any) => p.id !== prev.playerId),
-              spawnedObjects: response.game_state.objects,
-              bullets: response.game_state.bullets
+              onlinePlayers: response.game_state.players.filter((p: any) => p.id !== prev.playerId)
             }));
           }
         })
@@ -713,7 +824,7 @@ const Index = () => {
           console.error('Ошибка синхронизации:', error);
           setMultiplayerData(prev => ({ ...prev, isConnected: false }));
         });
-    }, 1000); // Обновляем каждую секунду
+    }, 100);
 
     return () => clearInterval(syncInterval);
   }, [currentGame, multiplayerData.isPlaying, multiplayerData.isConnected]);
@@ -1263,7 +1374,7 @@ const Index = () => {
               className="absolute text-5xl transition-all duration-100"
               style={{ left: `${multiplayerData.playerX}px`, top: `${multiplayerData.playerY}px` }}
             >
-              🤖
+              {inventory.playerEmoji}
             </div>
 
             {/* Другие игроки */}
@@ -1356,6 +1467,13 @@ const Index = () => {
           </div>
           
           <div className="flex items-center space-x-2 md:space-x-4">
+            {devMode && (
+              <div className="flex items-center space-x-1 bg-purple-600 text-white rounded-full px-3 py-1 text-xs">
+                <span>🐧</span>
+                <span className="font-bold">DEV MODE</span>
+              </div>
+            )}
+            
             <div className="flex items-center space-x-1 md:space-x-2 bg-game-yellow/20 rounded-full px-2 md:px-4 py-1 md:py-2">
               <span className="text-xl">💰</span>
               <span className="font-bold text-game-dark text-sm md:text-base">{coins}</span>
