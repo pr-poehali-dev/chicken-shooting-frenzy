@@ -124,7 +124,7 @@ const GoogleAuth = ({ onLogin, onLogout, user, gameData }: GoogleAuthProps) => {
           </Button>
           
           <div className="text-xs text-gray-500 text-center space-y-1">
-            <p>✅ Облачное сохранение прогресса</p>
+            <p></p>
             <p>✅ Синхронизация между устройствами</p>
             <p>✅ Безопасность данных</p>
           </div>
