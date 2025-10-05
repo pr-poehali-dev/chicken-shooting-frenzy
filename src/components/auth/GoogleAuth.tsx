@@ -105,9 +105,7 @@ const GoogleAuth = ({ onLogin, onLogout, user, gameData }: GoogleAuthProps) => {
             <Icon name="User" size={32} className="text-white" />
           </div>
           <CardTitle className="text-xl font-bold">save progress</CardTitle>
-          <CardDescription>
-            Сохраняй прогресс в облаке и играй с любого устройства
-          </CardDescription>
+          <CardDescription>This is not logging into an account, but just saving, this is not authorization.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <Button
