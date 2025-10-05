@@ -104,7 +104,7 @@ const GoogleAuth = ({ onLogin, onLogout, user, gameData }: GoogleAuthProps) => {
           <div className="w-16 h-16 bg-blue-500 rounded-full mx-auto mb-4 flex items-center justify-center">
             <Icon name="User" size={32} className="text-white" />
           </div>
-          <CardTitle className="text-xl font-bold">Войти в аккаунт</CardTitle>
+          <CardTitle className="text-xl font-bold">save progress</CardTitle>
           <CardDescription>
             Сохраняй прогресс в облаке и играй с любого устройства
           </CardDescription>
