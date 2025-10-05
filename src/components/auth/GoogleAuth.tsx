@@ -125,7 +125,7 @@ const GoogleAuth = ({ onLogin, onLogout, user, gameData }: GoogleAuthProps) => {
           
           <div className="text-xs text-gray-500 text-center space-y-1">
             <p></p>
-            <p>✅ Синхронизация между устройствами</p>
+            <p></p>
             <p>✅ Безопасность данных</p>
           </div>
         </CardContent>
