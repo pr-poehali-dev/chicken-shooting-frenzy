@@ -17,6 +17,8 @@ const Index = () => {
   const [playersOnline, setPlayersOnline] = useState(0);
   const [devMode, setDevMode] = useState(false);
   const [showDevPanel, setShowDevPanel] = useState(false);
+  const [language, setLanguage] = useState<'ru' | 'en'>('en');
+  const [showSettings, setShowSettings] = useState(false);
   const [cheats, setCheats] = useState({
     aimbot: false,
     infiniteAmmo: false,
@@ -151,13 +153,41 @@ const Index = () => {
   const [isMobile, setIsMobile] = useState(false);
   const gameCanvasRef = useRef<HTMLDivElement>(null);
 
+  // Переводы
+  const t = {
+    ru: {
+      forest: 'Лес', desert: 'Пустыня', city: 'Город', space: 'Космос', ocean: 'Океан',
+      welcome: 'Добро пожаловать в мир игр! 🎮',
+      chooseMode: 'Выберите режим и начните играть прямо сейчас',
+      race: 'Гонки', pvp: 'PvP Арена', sandbox: 'Свободная игра', multiplayer: 'Мультиплеер',
+      zombie: 'Зомби волны', boss: 'Битва с боссом', coinGame: 'Сбор монет',
+      play: 'Играть', start: 'Начать', exit: 'Выход', login: 'Войти',
+      kills: 'Убийства', ammo: 'Патроны', time: 'Время', weapon: 'Оружие',
+      level: 'Уровень', exp: 'Опыт', room: 'Комната', players: 'Игроков',
+      connected: 'Подключен', offline: 'Офлайн', map: 'Карта', position: 'Позиция',
+      shopTitle: 'Магазин', coins: 'Монеты', buy: 'Купить', purchased: 'Куплено'
+    },
+    en: {
+      forest: 'Forest', desert: 'Desert', city: 'City', space: 'Space', ocean: 'Ocean',
+      welcome: 'Welcome to the world of games! 🎮',
+      chooseMode: 'Choose a mode and start playing right now',
+      race: 'Race', pvp: 'PvP Arena', sandbox: 'Free Play', multiplayer: 'Multiplayer',
+      zombie: 'Zombie Waves', boss: 'Boss Battle', coinGame: 'Coin Collector',
+      play: 'Play', start: 'Start', exit: 'Exit', login: 'Login',
+      kills: 'Kills', ammo: 'Ammo', time: 'Time', weapon: 'Weapon',
+      level: 'Level', exp: 'XP', room: 'Room', players: 'Players',
+      connected: 'Connected', offline: 'Offline', map: 'Map', position: 'Position',
+      shopTitle: 'Shop', coins: 'Coins', buy: 'Buy', purchased: 'Purchased'
+    }
+  };
+
   // Карты для песочницы
   const sandboxMaps = [
-    { id: 'forest', name: 'Лес', emoji: '🌲', bg: 'from-green-400 to-green-600' },
-    { id: 'desert', name: 'Пустыня', emoji: '🏜️', bg: 'from-yellow-400 to-orange-500' },
-    { id: 'city', name: 'Город', emoji: '🏢', bg: 'from-gray-400 to-blue-500' },
-    { id: 'space', name: 'Космос', emoji: '🌌', bg: 'from-purple-900 to-black' },
-    { id: 'ocean', name: 'Океан', emoji: '🌊', bg: 'from-blue-400 to-blue-800' }
+    { id: 'forest', name: t[language].forest, emoji: '🌲', bg: 'from-green-400 to-green-600' },
+    { id: 'desert', name: t[language].desert, emoji: '🏜️', bg: 'from-yellow-400 to-orange-500' },
+    { id: 'city', name: t[language].city, emoji: '🏢', bg: 'from-gray-400 to-blue-500' },
+    { id: 'space', name: t[language].space, emoji: '🌌', bg: 'from-purple-900 to-black' },
+    { id: 'ocean', name: t[language].ocean, emoji: '🌊', bg: 'from-blue-400 to-blue-800' }
   ];
 
   // Проверка мобильного устройства
@@ -1114,14 +1144,20 @@ const Index = () => {
       return (
         <div className="fixed inset-0 bg-gradient-to-br from-red-600 to-orange-500 z-50">
           <div className="absolute top-4 left-4 text-white font-bold bg-black/50 rounded-lg p-3">
-            <p>🎯 Убийства: {pvpData.kills}/10</p>
-            <p>🔫 Патроны: {pvpData.ammo}</p>
-            <p>⚔️ Оружие: {inventory.activeWeapon || 'Базовое'}</p>
-            <p>⏱️ Время: {Math.floor(pvpData.gameTime)}с</p>
+            <p>🎯 {t[language].kills}: {pvpData.kills}/10</p>
+            <p>🔫 {t[language].ammo}: {pvpData.ammo}</p>
+            <p>⚔️ {t[language].weapon}: {inventory.activeWeapon || (language === 'ru' ? 'Базовое' : 'Basic')}</p>
+            <p>⏱️ {t[language].time}: {Math.floor(pvpData.gameTime)}{language === 'ru' ? 'с' : 's'}</p>
           </div>
-          <div className="absolute top-4 right-4">
-            <Button onClick={() => setCurrentGame('menu')} variant="secondary" size="sm">
-              Выход
+          <div className="absolute top-4 right-4 z-[100]">
+            <Button 
+              onClick={() => setCurrentGame('menu')} 
+              variant="secondary" 
+              size="sm"
+              className="pointer-events-auto"
+              style={{ pointerEvents: 'auto' }}
+            >
+              {language === 'ru' ? 'Выход' : 'Exit'}
             </Button>
           </div>
           
@@ -1203,37 +1239,45 @@ const Index = () => {
       
       return (
         <div className={`fixed inset-0 bg-gradient-to-br ${currentMap.bg} z-50`}>
-          <div className="absolute top-4 left-4 text-white font-bold">
-            <p>Карта: {currentMap.name} {currentMap.emoji}</p>
-            <p>Позиция: ({Math.round(sandboxData.chickenX)}, {Math.round(sandboxData.chickenY)})</p>
+          <div className="absolute top-4 left-4 text-white font-bold bg-black/50 rounded-lg p-3">
+            <p>{t[language].map}: {currentMap.name} {currentMap.emoji}</p>
+            <p>{t[language].position}: ({Math.round(sandboxData.chickenX)}, {Math.round(sandboxData.chickenY)})</p>
           </div>
-          <div className="absolute top-4 right-4 flex flex-col space-y-2">
+          <div className="absolute top-4 right-4 flex flex-col space-y-2 z-[100]">
             <div className="flex space-x-2">
               <select 
                 value={sandboxData.selectedMap} 
                 onChange={(e) => setSandboxData(prev => ({ ...prev, selectedMap: e.target.value }))}
-                className="px-3 py-2 rounded-lg text-black font-medium bg-white border-2 border-white shadow-lg hover:border-blue-300 transition-colors cursor-pointer"
+                className="px-3 py-2 rounded-lg text-black font-medium bg-white border-2 border-white shadow-lg hover:border-blue-300 transition-colors cursor-pointer pointer-events-auto"
+                style={{ pointerEvents: 'auto' }}
               >
                 {sandboxMaps.map(map => (
                   <option key={map.id} value={map.id}>{map.emoji} {map.name}</option>
                 ))}
               </select>
-              <Button onClick={() => setCurrentGame('menu')} variant="secondary" size="sm">
-                Выход
+              <Button 
+                onClick={() => setCurrentGame('menu')} 
+                variant="secondary" 
+                size="sm"
+                className="pointer-events-auto"
+                style={{ pointerEvents: 'auto' }}
+              >
+                {language === 'ru' ? 'Выход' : 'Exit'}
               </Button>
             </div>
             
             {/* Кнопки быстрого выбора карт */}
-            <div className="flex space-x-1 bg-black/50 rounded-lg p-2">
+            <div className="flex space-x-1 bg-black/50 rounded-lg p-2 pointer-events-auto" style={{ pointerEvents: 'auto' }}>
               {sandboxMaps.map(map => (
                 <button
                   key={map.id}
                   onClick={() => setSandboxData(prev => ({ ...prev, selectedMap: map.id }))}
-                  className={`w-10 h-10 rounded-lg text-xl transition-all ${
+                  className={`w-10 h-10 rounded-lg text-xl transition-all pointer-events-auto ${
                     sandboxData.selectedMap === map.id 
                       ? 'bg-white text-black scale-110' 
                       : 'bg-black/30 text-white hover:bg-white/20'
                   }`}
+                  style={{ pointerEvents: 'auto' }}
                   title={map.name}
                 >
                   {map.emoji}
@@ -1356,10 +1400,10 @@ const Index = () => {
           {/* UI панель */}
           <div className="absolute top-4 left-4 bg-black/80 text-white p-4 rounded-lg">
             <p className="font-bold">👤 {accountData.username}</p>
-            <p>⭐ Уровень: {accountData.level}</p>
-            <p>🎯 Опыт: {accountData.xp % 100}/100</p>
-            <p>🌐 Комната: {multiplayerData.currentRoom || 'Основная'}</p>
-            <p>👥 Игроков: {multiplayerData.onlinePlayers.length + 1}</p>
+            <p>⭐ {t[language].level}: {accountData.level}</p>
+            <p>🎯 {t[language].exp}: {accountData.xp % 100}/100</p>
+            <p>🌐 {t[language].room}: {multiplayerData.currentRoom || (language === 'ru' ? 'Основная' : 'Main')}</p>
+            <p>👥 {t[language].players}: {multiplayerData.onlinePlayers.length + 1}</p>
             <div className="mt-2 w-full bg-gray-600 rounded-full h-2">
               <div 
                 className="bg-green-500 h-2 rounded-full transition-all duration-300" 
@@ -1369,15 +1413,21 @@ const Index = () => {
           </div>
 
           {/* Кнопки управления и статус */}
-          <div className="absolute top-4 right-4 space-y-2">
-            <div className="bg-black/80 text-white px-3 py-2 rounded-lg text-sm flex items-center space-x-2">
+          <div className="absolute top-4 right-4 space-y-2 z-[100]">
+            <div className="bg-black/80 text-white px-3 py-2 rounded-lg text-sm flex items-center space-x-2 pointer-events-auto" style={{ pointerEvents: 'auto' }}>
               <span className={`w-2 h-2 rounded-full ${multiplayerData.isConnected ? 'bg-green-500 animate-pulse' : 'bg-red-500'}`}></span>
-              <span>{multiplayerData.isConnected ? 'Подключен' : 'Офлайн'}</span>
+              <span>{multiplayerData.isConnected ? (language === 'ru' ? 'Подключен' : 'Connected') : (language === 'ru' ? 'Офлайн' : 'Offline')}</span>
               <span className="text-gray-400">|</span>
               <span>👥 {multiplayerData.onlinePlayers.length}</span>
             </div>
-            <Button onClick={() => setCurrentGame('menu')} variant="secondary" size="sm" className="w-full">
-              Выход
+            <Button 
+              onClick={() => setCurrentGame('menu')} 
+              variant="secondary" 
+              size="sm" 
+              className="w-full pointer-events-auto"
+              style={{ pointerEvents: 'auto' }}
+            >
+              {language === 'ru' ? 'Выход' : 'Exit'}
             </Button>
           </div>
 
@@ -1597,6 +1647,16 @@ const Index = () => {
               </div>
             )}
             
+            <Button 
+              onClick={() => setShowSettings(true)} 
+              variant="outline" 
+              size="sm"
+              className="flex items-center space-x-1"
+            >
+              <Icon name="Settings" size={16} />
+              <span className="hidden md:inline">{language === 'ru' ? 'Настройки' : 'Settings'}</span>
+            </Button>
+            
             <div className="flex items-center space-x-1 md:space-x-2 bg-game-yellow/20 rounded-full px-2 md:px-4 py-1 md:py-2">
               <span className="text-xl">💰</span>
               <span className="font-bold text-game-dark text-sm md:text-base">{coins}</span>
@@ -1612,10 +1672,10 @@ const Index = () => {
             ) : (
               <div className="flex space-x-2">
                 <Button onClick={() => setShowAuth(true)} variant="outline" size={isMobile ? "sm" : "default"}>
-                  Войти
+                  {language === 'ru' ? 'Войти' : 'Login'}
                 </Button>
                 <Button onClick={() => setShowNicknameInput(true)} size={isMobile ? "sm" : "default"}>
-                  Мультиплеер
+                  {t[language].multiplayer}
                 </Button>
               </div>
             )}
@@ -1688,6 +1748,75 @@ const Index = () => {
             onLogout={() => setUser(null)}
             gameData={{ coins, usedPromoCodes, inventory, stats, sandboxData }}
           />
+        </DialogContent>
+      </Dialog>
+
+      {/* Диалог настроек */}
+      <Dialog open={showSettings} onOpenChange={setShowSettings}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Icon name="Settings" size={24} />
+              {language === 'ru' ? 'Настройки' : 'Settings'}
+            </DialogTitle>
+            <DialogDescription>
+              {language === 'ru' ? 'Настройте игру под себя' : 'Customize your game experience'}
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-6">
+            {/* Выбор языка */}
+            <div>
+              <h3 className="font-bold mb-3 flex items-center gap-2">
+                <Icon name="Globe" size={18} />
+                {language === 'ru' ? 'Язык / Language' : 'Language / Язык'}
+              </h3>
+              <div className="grid grid-cols-2 gap-3">
+                <button
+                  onClick={() => setLanguage('en')}
+                  className={`p-4 rounded-lg border-2 transition-all hover:scale-105 ${
+                    language === 'en' 
+                      ? 'border-blue-500 bg-blue-50 shadow-lg' 
+                      : 'border-gray-300 bg-white hover:border-blue-300'
+                  }`}
+                >
+                  <div className="text-3xl mb-2">🇬🇧</div>
+                  <div className="font-bold">English</div>
+                  <div className="text-xs text-gray-500">International</div>
+                </button>
+                <button
+                  onClick={() => setLanguage('ru')}
+                  className={`p-4 rounded-lg border-2 transition-all hover:scale-105 ${
+                    language === 'ru' 
+                      ? 'border-blue-500 bg-blue-50 shadow-lg' 
+                      : 'border-gray-300 bg-white hover:border-blue-300'
+                  }`}
+                >
+                  <div className="text-3xl mb-2">🇷🇺</div>
+                  <div className="font-bold">Русский</div>
+                  <div className="text-xs text-gray-500">Russian</div>
+                </button>
+              </div>
+            </div>
+
+            {/* Информация */}
+            <div className="bg-gray-100 rounded-lg p-4">
+              <p className="text-sm text-gray-600 flex items-start gap-2">
+                <Icon name="Info" size={16} className="mt-0.5 flex-shrink-0" />
+                <span>
+                  {language === 'ru' 
+                    ? 'Игра соответствует стандартам developer.crazygames.com с поддержкой английского и русского языков.'
+                    : 'This game complies with developer.crazygames.com standards with English and Russian language support.'}
+                </span>
+              </p>
+            </div>
+          </div>
+
+          <div className="flex justify-end mt-4">
+            <Button onClick={() => setShowSettings(false)} className="w-full">
+              {language === 'ru' ? 'Готово' : 'Done'}
+            </Button>
+          </div>
         </DialogContent>
       </Dialog>
 
@@ -1811,10 +1940,10 @@ const Index = () => {
         {/* Hero Section */}
         <section className="text-center mb-8 md:mb-12">
           <h2 className="text-3xl md:text-5xl font-bold text-game-dark mb-4 animate-slide-in">
-            Добро пожаловать в мир игр! 🎮
+            {t[language].welcome}
           </h2>
           <p className="text-lg md:text-xl text-gray-700 mb-6 md:mb-8 animate-fade-in">
-            Выберите режим и начните играть прямо сейчас
+            {t[language].chooseMode}
           </p>
           
           {/* Прогресс аккаунта */}
@@ -1844,14 +1973,16 @@ const Index = () => {
             <Card className="cursor-pointer hover:shadow-lg transition-all duration-300 transform hover:-translate-y-1 border-l-4 border-l-red-500">
               <CardContent className="p-4 md:p-6 text-center">
                 <div className="text-4xl md:text-6xl mb-2 md:mb-4">🏁</div>
-                <h3 className="text-lg md:text-xl font-bold mb-2">Гонки</h3>
-                <p className="text-sm md:text-base text-gray-600 mb-4">Уворачивайтесь от препятствий и покажите лучшее время</p>
+                <h3 className="text-lg md:text-xl font-bold mb-2">{t[language].race}</h3>
+                <p className="text-sm md:text-base text-gray-600 mb-4">
+                  {language === 'ru' ? 'Уворачивайтесь от препятствий и покажите лучшее время' : 'Dodge obstacles and show the best time'}
+                </p>
                 <Button 
                   onClick={() => startGame('race')} 
                   className="w-full bg-red-500 hover:bg-red-600" 
                   size={isMobile ? "sm" : "default"}
                 >
-                  Начать гонку
+                  {language === 'ru' ? 'Начать гонку' : 'Start Race'}
                 </Button>
               </CardContent>
             </Card>
@@ -1859,14 +1990,16 @@ const Index = () => {
             <Card className="cursor-pointer hover:shadow-lg transition-all duration-300 transform hover:-translate-y-1 border-l-4 border-l-purple-500">
               <CardContent className="p-4 md:p-6 text-center">
                 <div className="text-4xl md:text-6xl mb-2 md:mb-4">⚔️</div>
-                <h3 className="text-lg md:text-xl font-bold mb-2">PvP Арена</h3>
-                <p className="text-sm md:text-base text-gray-600 mb-4">Сражайтесь с другими игроками в реальном времени</p>
+                <h3 className="text-lg md:text-xl font-bold mb-2">{t[language].pvp}</h3>
+                <p className="text-sm md:text-base text-gray-600 mb-4">
+                  {language === 'ru' ? 'Сражайтесь с другими игроками в реальном времени' : 'Fight other players in real time'}
+                </p>
                 <Button 
                   onClick={() => startGame('pvp')} 
                   className="w-full bg-purple-500 hover:bg-purple-600" 
                   size={isMobile ? "sm" : "default"}
                 >
-                  В бой!
+                  {language === 'ru' ? 'В бой!' : 'To Battle!'}
                 </Button>
               </CardContent>
             </Card>
@@ -1874,8 +2007,10 @@ const Index = () => {
             <Card className="cursor-pointer hover:shadow-lg transition-all duration-300 transform hover:-translate-y-1 border-l-4 border-l-green-500">
               <CardContent className="p-4 md:p-6 text-center">
                 <div className="text-4xl md:text-6xl mb-2 md:mb-4">🎮</div>
-                <h3 className="text-lg md:text-xl font-bold mb-2">Свободная игра</h3>
-                <p className="text-sm md:text-base text-gray-600 mb-4">Исследуйте мир без ограничений</p>
+                <h3 className="text-lg md:text-xl font-bold mb-2">{t[language].sandbox}</h3>
+                <p className="text-sm md:text-base text-gray-600 mb-4">
+                  {language === 'ru' ? 'Исследуйте мир без ограничений' : 'Explore the world without limits'}
+                </p>
                 
                 {/* Выбор карты */}
                 <div className="mb-4">
@@ -1906,7 +2041,7 @@ const Index = () => {
                   className="w-full bg-green-500 hover:bg-green-600" 
                   size={isMobile ? "sm" : "default"}
                 >
-                  Исследовать {sandboxMaps.find(m => m.id === sandboxData.selectedMap)?.emoji}
+                  {language === 'ru' ? 'Исследовать' : 'Explore'} {sandboxMaps.find(m => m.id === sandboxData.selectedMap)?.emoji}
                 </Button>
               </CardContent>
             </Card>
@@ -1914,15 +2049,17 @@ const Index = () => {
             <Card className="cursor-pointer hover:shadow-lg transition-all duration-300 transform hover:-translate-y-1 border-l-4 border-l-blue-500">
               <CardContent className="p-4 md:p-6 text-center">
                 <div className="text-4xl md:text-6xl mb-2 md:mb-4">🌐</div>
-                <h3 className="text-lg md:text-xl font-bold mb-2">Мультиплеер</h3>
-                <p className="text-sm md:text-base text-gray-600 mb-4">Играйте с друзьями на пустой карте</p>
+                <h3 className="text-lg md:text-xl font-bold mb-2">{t[language].multiplayer}</h3>
+                <p className="text-sm md:text-base text-gray-600 mb-4">
+                  {language === 'ru' ? 'Играйте с друзьями на пустой карте' : 'Play with friends on an empty map'}
+                </p>
                 
                 <div className="mb-3">
                   <div className="flex items-center justify-center space-x-2 text-sm">
                     <span className={`w-2 h-2 rounded-full ${multiplayerData.isConnected ? 'bg-green-500' : 'bg-red-500'}`}></span>
-                    <span>{multiplayerData.isConnected ? 'Подключен' : 'Офлайн'}</span>
+                    <span>{multiplayerData.isConnected ? t[language].connected : t[language].offline}</span>
                   </div>
-                  <p className="text-xs text-gray-500 mt-1">Игроков онлайн: {playersOnline}</p>
+                  <p className="text-xs text-gray-500 mt-1">{language === 'ru' ? 'Игроков онлайн' : 'Players online'}: {playersOnline}</p>
                 </div>
 
                 <Button 
@@ -1930,7 +2067,7 @@ const Index = () => {
                   className="w-full bg-blue-500 hover:bg-blue-600" 
                   size={isMobile ? "sm" : "default"}
                 >
-                  {accountData.isLoggedIn ? 'Играть онлайн' : 'Ввести ник'}
+                  {accountData.isLoggedIn ? (language === 'ru' ? 'Играть онлайн' : 'Play Online') : (language === 'ru' ? 'Ввести ник' : 'Enter Nickname')}
                 </Button>
               </CardContent>
             </Card>
@@ -1939,14 +2076,16 @@ const Index = () => {
             <Card className="cursor-pointer hover:shadow-lg transition-all duration-300 transform hover:-translate-y-1 border-l-4 border-l-orange-500">
               <CardContent className="p-4 md:p-6 text-center">
                 <div className="text-4xl md:text-6xl mb-2 md:mb-4">🧟</div>
-                <h3 className="text-lg md:text-xl font-bold mb-2">Зомби волны</h3>
-                <p className="text-sm md:text-base text-gray-600 mb-4">Выживайте против волн зомби!</p>
+                <h3 className="text-lg md:text-xl font-bold mb-2">{t[language].zombie}</h3>
+                <p className="text-sm md:text-base text-gray-600 mb-4">
+                  {language === 'ru' ? 'Выживайте против волн зомби!' : 'Survive against waves of zombies!'}
+                </p>
                 <Button 
                   onClick={() => startGame('zombie')} 
                   className="w-full bg-orange-500 hover:bg-orange-600" 
                   size={isMobile ? "sm" : "default"}
                 >
-                  Начать выживание
+                  {language === 'ru' ? 'Начать выживание' : 'Start Survival'}
                 </Button>
               </CardContent>
             </Card>
@@ -1954,14 +2093,16 @@ const Index = () => {
             <Card className="cursor-pointer hover:shadow-lg transition-all duration-300 transform hover:-translate-y-1 border-l-4 border-l-pink-500">
               <CardContent className="p-4 md:p-6 text-center">
                 <div className="text-4xl md:text-6xl mb-2 md:mb-4">👹</div>
-                <h3 className="text-lg md:text-xl font-bold mb-2">Битва с боссом</h3>
-                <p className="text-sm md:text-base text-gray-600 mb-4">Победите могущественного босса</p>
+                <h3 className="text-lg md:text-xl font-bold mb-2">{t[language].boss}</h3>
+                <p className="text-sm md:text-base text-gray-600 mb-4">
+                  {language === 'ru' ? 'Победите могущественного босса' : 'Defeat the mighty boss'}
+                </p>
                 <Button 
                   onClick={() => startGame('boss')} 
                   className="w-full bg-pink-500 hover:bg-pink-600" 
                   size={isMobile ? "sm" : "default"}
                 >
-                  В бой против босса
+                  {language === 'ru' ? 'В бой против босса' : 'Fight the Boss'}
                 </Button>
               </CardContent>
             </Card>
@@ -1969,14 +2110,16 @@ const Index = () => {
             <Card className="cursor-pointer hover:shadow-lg transition-all duration-300 transform hover:-translate-y-1 border-l-4 border-l-yellow-500">
               <CardContent className="p-4 md:p-6 text-center">
                 <div className="text-4xl md:text-6xl mb-2 md:mb-4">💰</div>
-                <h3 className="text-lg md:text-xl font-bold mb-2">Сбор монет</h3>
-                <p className="text-sm md:text-base text-gray-600 mb-4">Соберите максимум монет за время</p>
+                <h3 className="text-lg md:text-xl font-bold mb-2">{t[language].coinGame}</h3>
+                <p className="text-sm md:text-base text-gray-600 mb-4">
+                  {language === 'ru' ? 'Соберите максимум монет за время' : 'Collect max coins in time'}
+                </p>
                 <Button 
                   onClick={() => startGame('coins')} 
                   className="w-full bg-yellow-500 hover:bg-yellow-600" 
                   size={isMobile ? "sm" : "default"}
                 >
-                  Собирать монеты
+                  {language === 'ru' ? 'Собирать монеты' : 'Collect Coins'}
                 </Button>
               </CardContent>
             </Card>
