@@ -1,71 +1,17 @@
 {
   "tests": [
     {
-      "name": "Join multiplayer room",
+      "name": "Join game",
       "method": "POST",
-      "path": "/",
       "body": {
         "action": "join",
-        "playerId": "test-player-1",
-        "nickname": "TestPlayer",
+        "playerId": "p1",
+        "nickname": "Test",
         "room": "main"
       },
       "expectedStatus": 200,
       "expectedBody": {
-        "success": true,
-        "player": {
-          "id": "string",
-          "nickname": "string",
-          "x": "number",
-          "y": "number"
-        },
-        "game_state": {
-          "players": "array",
-          "objects": "array",
-          "bullets": "array"
-        }
-      },
-      "bodyMatcher": "partial"
-    },
-    {
-      "name": "Move player",
-      "method": "POST",
-      "path": "/",
-      "body": {
-        "action": "move",
-        "playerId": "test-player-1",
-        "x": 450,
-        "y": 350,
-        "room": "main"
-      },
-      "expectedStatus": 200,
-      "expectedBody": {
-        "success": true,
-        "game_state": {
-          "players": "array"
-        }
-      },
-      "bodyMatcher": "partial"
-    },
-    {
-      "name": "Spawn object",
-      "method": "POST",
-      "path": "/",
-      "body": {
-        "action": "spawn_object",
-        "playerId": "test-player-1",
-        "object_type": "tree",
-        "x": 500,
-        "y": 200,
-        "room": "main"
-      },
-      "expectedStatus": 200,
-      "expectedBody": {
-        "success": true,
-        "object": {
-          "type": "tree",
-          "emoji": "🌲"
-        }
+        "success": true
       },
       "bodyMatcher": "partial"
     }

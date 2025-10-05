@@ -313,6 +313,17 @@ const Index = () => {
     playSound('coin');
   };
 
+  const handleNicknameSubmit = () => {
+    const trimmedNick = nicknameInput.trim();
+    if (!trimmedNick || trimmedNick.length < 2) {
+      alert('❌ Введите ник (минимум 2 символа)!');
+      return;
+    }
+    setNicknameInput(trimmedNick);
+    setShowNicknameInput(false);
+    startGame('multiplayer');
+  };
+
   const handlePromoCode = () => {
     playSound('click');
     const validCodes = ['пингвин', 'зайчик'];
@@ -736,6 +747,14 @@ const Index = () => {
         isPlaying: true
       }));
     } else if (gameType === 'multiplayer') {
+      // Показываем форму ввода ника если пользователь не залогинен
+      if (!accountData.isLoggedIn && !nicknameInput) {
+        setShowNicknameInput(true);
+        return;
+      }
+
+      const nickname = nicknameInput || accountData.username || 'Игрок';
+      
       setMultiplayerData(prev => ({
         ...prev,
         isPlaying: true,
@@ -744,11 +763,13 @@ const Index = () => {
         bullets: []
       }));
       
+      setCurrentGame('multiplayer');
+      
       // Подключаемся к серверу
-      multiplayerAPI.joinRoom(multiplayerData.playerId, accountData.username, 'main')
+      multiplayerAPI.joinRoom(multiplayerData.playerId, nickname, 'main')
         .then(response => {
           if (response.success) {
-            console.log('Подключились к мультиплееру!', response);
+            console.log('✅ Подключились к мультиплееру!', response);
             // Обновляем состояние игры с сервера
             if (response.game_state) {
               setMultiplayerData(prev => ({
@@ -762,8 +783,10 @@ const Index = () => {
           }
         })
         .catch(error => {
-          console.error('Ошибка подключения:', error);
+          console.error('❌ Ошибка подключения:', error);
+          alert('Не удалось подключиться к серверу');
           setMultiplayerData(prev => ({ ...prev, isConnected: false }));
+          setCurrentGame('menu');
         });
     }
   };
@@ -1109,9 +1132,15 @@ const Index = () => {
             </div>
           </div>
 
-          {/* Кнопки управления */}
+          {/* Кнопки управления и статус */}
           <div className="absolute top-4 right-4 space-y-2">
-            <Button onClick={() => setCurrentGame('menu')} variant="secondary" size="sm">
+            <div className="bg-black/80 text-white px-3 py-2 rounded-lg text-sm flex items-center space-x-2">
+              <span className={`w-2 h-2 rounded-full ${multiplayerData.isConnected ? 'bg-green-500 animate-pulse' : 'bg-red-500'}`}></span>
+              <span>{multiplayerData.isConnected ? 'Подключен' : 'Офлайн'}</span>
+              <span className="text-gray-400">|</span>
+              <span>👥 {multiplayerData.onlinePlayers.length}</span>
+            </div>
+            <Button onClick={() => setCurrentGame('menu')} variant="secondary" size="sm" className="w-full">
               Выход
             </Button>
           </div>
@@ -1255,28 +1284,44 @@ const Index = () => {
             <div className="grid grid-cols-3 gap-2">
               <div></div>
               <Button 
-                onClick={() => setMultiplayerData(prev => ({ ...prev, playerY: Math.max(0, prev.playerY - 20) }))}
+                onClick={() => {
+                  const newY = Math.max(0, multiplayerData.playerY - 20);
+                  setMultiplayerData(prev => ({ ...prev, playerY: newY }));
+                  multiplayerAPI.movePlayer(multiplayerData.playerId, multiplayerData.playerX, newY).catch(console.error);
+                }}
                 className="w-12 h-12"
               >
                 ⬆️
               </Button>
               <div></div>
               <Button 
-                onClick={() => setMultiplayerData(prev => ({ ...prev, playerX: Math.max(0, prev.playerX - 20) }))}
+                onClick={() => {
+                  const newX = Math.max(0, multiplayerData.playerX - 20);
+                  setMultiplayerData(prev => ({ ...prev, playerX: newX }));
+                  multiplayerAPI.movePlayer(multiplayerData.playerId, newX, multiplayerData.playerY).catch(console.error);
+                }}
                 className="w-12 h-12"
               >
                 ⬅️
               </Button>
               <div></div>
               <Button 
-                onClick={() => setMultiplayerData(prev => ({ ...prev, playerX: Math.min(window.innerWidth - 60, prev.playerX + 20) }))}
+                onClick={() => {
+                  const newX = Math.min(window.innerWidth - 60, multiplayerData.playerX + 20);
+                  setMultiplayerData(prev => ({ ...prev, playerX: newX }));
+                  multiplayerAPI.movePlayer(multiplayerData.playerId, newX, multiplayerData.playerY).catch(console.error);
+                }}
                 className="w-12 h-12"
               >
                 ➡️
               </Button>
               <div></div>
               <Button 
-                onClick={() => setMultiplayerData(prev => ({ ...prev, playerY: Math.min(window.innerHeight - 60, prev.playerY + 20) }))}
+                onClick={() => {
+                  const newY = Math.min(window.innerHeight - 60, multiplayerData.playerY + 20);
+                  setMultiplayerData(prev => ({ ...prev, playerY: newY }));
+                  multiplayerAPI.movePlayer(multiplayerData.playerId, multiplayerData.playerX, newY).catch(console.error);
+                }}
                 className="w-12 h-12"
               >
                 ⬇️
@@ -1709,6 +1754,30 @@ const Index = () => {
           </TabsContent>
         </Tabs>
       </main>
+
+      {/* Диалог ввода ника для мультиплеера */}
+      <Dialog open={showNicknameInput} onOpenChange={setShowNicknameInput}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>🌐 Вход в мультиплеер</DialogTitle>
+            <DialogDescription>
+              Введите ваш никнейм для игры с другими игроками
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 mt-4">
+            <Input
+              placeholder="Ваш ник..."
+              value={nicknameInput}
+              onChange={(e) => setNicknameInput(e.target.value)}
+              onKeyPress={(e) => e.key === 'Enter' && handleNicknameSubmit()}
+              autoFocus
+            />
+            <Button onClick={handleNicknameSubmit} className="w-full bg-blue-500 hover:bg-blue-600">
+              Подключиться 🚀
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Footer */}
       <footer className="bg-game-dark text-white py-6 md:py-8 mt-12 md:mt-16">

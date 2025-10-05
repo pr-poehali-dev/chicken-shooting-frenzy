@@ -1,274 +1,209 @@
+"""
+Business: Multiplayer game server with rooms, players, objects
+Args: event with httpMethod, body; context with request_id
+Returns: HTTP response with game state
+"""
 import json
-from typing import Dict, List, Any
-from dataclasses import dataclass, asdict
-from datetime import datetime
-import uuid
+from typing import Dict, Any, List
+from dataclasses import dataclass, field, asdict
+import time
+
+# In-memory game state (в продакшене использовать Redis)
+game_rooms: Dict[str, 'GameRoom'] = {}
 
 @dataclass
 class Player:
     id: str
     nickname: str
-    x: float
-    y: float
-    emoji: str = "🐥"
-    room: str = "main"
+    x: float = 400
+    y: float = 300
+    emoji: str = "🚗"
+    last_action: float = field(default_factory=time.time)
 
 @dataclass
 class GameObject:
-    id: str
     type: str
+    emoji: str
     x: float
     y: float
-    emoji: str
-    created_by: str
+    id: str = ""
+    
+    def __post_init__(self):
+        if not self.id:
+            self.id = f"{self.type}_{int(time.time() * 1000)}"
 
 @dataclass
 class Bullet:
     id: str
     x: float
     y: float
-    direction: float
-    speed: float = 5
-    created_by: str
+    dx: float
+    dy: float
+    owner_id: str
+    created_at: float = field(default_factory=time.time)
 
+@dataclass
 class GameRoom:
-    def __init__(self, name: str):
-        self.name = name
-        self.players: Dict[str, Player] = {}
-        self.objects: Dict[str, GameObject] = {}
-        self.bullets: Dict[str, Bullet] = {}
+    name: str
+    players: Dict[str, Player] = field(default_factory=dict)
+    objects: List[GameObject] = field(default_factory=list)
+    bullets: List[Bullet] = field(default_factory=list)
     
-    def add_player(self, player_id: str, nickname: str):
-        """Добавить игрока в комнату"""
-        self.players[player_id] = Player(
-            id=player_id,
-            nickname=nickname,
-            x=400,
-            y=300,
-            room=self.name
-        )
-        return self.players[player_id]
-    
-    def remove_player(self, player_id: str):
-        """Удалить игрока из комнаты"""
-        if player_id in self.players:
-            del self.players[player_id]
-    
-    def update_player_position(self, player_id: str, x: float, y: float):
-        """Обновить позицию игрока"""
-        if player_id in self.players:
-            self.players[player_id].x = x
-            self.players[player_id].y = y
-    
-    def spawn_object(self, object_type: str, x: float, y: float, created_by: str):
-        """Создать объект в игре"""
-        object_id = str(uuid.uuid4())
-        emoji_map = {
-            'tree': '🌲',
-            'rock': '🗿', 
-            'house': '🏠',
-            'car': '🚗',
-            'star': '⭐',
-            'diamond': '💎'
+    def cleanup_inactive(self):
+        """Удаляем неактивных игроков (>60 сек)"""
+        current_time = time.time()
+        self.players = {
+            pid: p for pid, p in self.players.items()
+            if current_time - p.last_action < 60
         }
-        
-        self.objects[object_id] = GameObject(
-            id=object_id,
-            type=object_type,
-            x=x,
-            y=y,
-            emoji=emoji_map.get(object_type, '🟫'),
-            created_by=created_by
-        )
-        return self.objects[object_id]
-    
-    def create_bullet(self, x: float, y: float, direction: float, created_by: str):
-        """Создать пулю"""
-        bullet_id = str(uuid.uuid4())
-        self.bullets[bullet_id] = Bullet(
-            id=bullet_id,
-            x=x,
-            y=y,
-            direction=direction,
-            created_by=created_by
-        )
-        return self.bullets[bullet_id]
-    
-    def get_game_state(self):
-        """Получить состояние игры"""
-        return {
-            'players': [asdict(player) for player in self.players.values()],
-            'objects': [asdict(obj) for obj in self.objects.values()],
-            'bullets': [asdict(bullet) for bullet in self.bullets.values()]
-        }
+        # Удаляем старые пули (>10 сек)
+        self.bullets = [b for b in self.bullets if current_time - b.created_at < 10]
 
-# Глобальные переменные для хранения состояния
-rooms: Dict[str, GameRoom] = {}
-
-def get_or_create_room(room_name: str) -> GameRoom:
+def get_room(room_name: str) -> GameRoom:
     """Получить или создать комнату"""
-    if room_name not in rooms:
-        rooms[room_name] = GameRoom(room_name)
-    return rooms[room_name]
+    if room_name not in game_rooms:
+        game_rooms[room_name] = GameRoom(name=room_name)
+    room = game_rooms[room_name]
+    room.cleanup_inactive()
+    return room
 
 def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
-    '''
-    REST API сервер для мультиплеера с синхронизацией игроков
-    Args: event - dict с httpMethod, body
-          context - объект контекста
-    Returns: HTTP JSON ответ
-    '''
-    method = event.get('httpMethod', 'POST')
+    method = event.get('httpMethod', 'GET')
     
-    # Обработка HTTP OPTIONS для CORS
+    # CORS
+    cors_headers = {
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+        'Access-Control-Allow-Headers': 'Content-Type, X-User-Id',
+        'Access-Control-Max-Age': '86400',
+        'Content-Type': 'application/json'
+    }
+    
     if method == 'OPTIONS':
-        return {
-            'statusCode': 200,
-            'headers': {
-                'Access-Control-Allow-Origin': '*',
-                'Access-Control-Allow-Methods': 'POST, GET, OPTIONS',
-                'Access-Control-Allow-Headers': 'Content-Type, X-Player-Id, X-Nickname',
-                'Access-Control-Max-Age': '86400'
-            },
-            'isBase64Encoded': False,
-            'body': ''
-        }
+        return {'statusCode': 200, 'headers': cors_headers, 'body': ''}
     
-    # Обработка POST запросов
-    if method == 'POST':
-        try:
-            body_data = json.loads(event.get('body', '{}'))
-            action = body_data.get('action')
-            room_name = body_data.get('room', 'main')
-            player_id = body_data.get('playerId')
+    try:
+        body = json.loads(event.get('body', '{}'))
+        action = body.get('action', '')
+        room_name = body.get('room', 'main')
+        room = get_room(room_name)
+        
+        if action == 'join':
+            player_id = body.get('playerId', f"player_{int(time.time() * 1000)}")
+            nickname = body.get('nickname', 'Player')
             
-            room = get_or_create_room(room_name)
+            player = Player(id=player_id, nickname=nickname)
+            room.players[player_id] = player
             
-            if action == 'join':
-                # Подключение игрока
-                nickname = body_data.get('nickname', 'Player')
-                player = room.add_player(player_id, nickname)
-                
-                return {
-                    'statusCode': 200,
-                    'headers': {
-                        'Content-Type': 'application/json',
-                        'Access-Control-Allow-Origin': '*'
-                    },
-                    'isBase64Encoded': False,
-                    'body': json.dumps({
-                        'success': True,
-                        'player': asdict(player),
-                        'game_state': room.get_game_state()
-                    })
-                }
-            
-            elif action == 'move':
-                # Движение игрока
-                x = body_data.get('x', 0)
-                y = body_data.get('y', 0)
-                room.update_player_position(player_id, x, y)
-                
-                return {
-                    'statusCode': 200,
-                    'headers': {
-                        'Content-Type': 'application/json',
-                        'Access-Control-Allow-Origin': '*'
-                    },
-                    'isBase64Encoded': False,
-                    'body': json.dumps({
-                        'success': True,
-                        'game_state': room.get_game_state()
-                    })
-                }
-            
-            elif action == 'spawn_object':
-                # Создание объекта
-                obj_type = body_data.get('object_type', 'tree')
-                x = body_data.get('x', 0)
-                y = body_data.get('y', 0)
-                
-                game_object = room.spawn_object(obj_type, x, y, player_id)
-                
-                return {
-                    'statusCode': 200,
-                    'headers': {
-                        'Content-Type': 'application/json',
-                        'Access-Control-Allow-Origin': '*'
-                    },
-                    'isBase64Encoded': False,
-                    'body': json.dumps({
-                        'success': True,
-                        'object': asdict(game_object),
-                        'game_state': room.get_game_state()
-                    })
-                }
-            
-            elif action == 'shoot':
-                # Стрельба
-                x = body_data.get('x', 0)
-                y = body_data.get('y', 0)
-                direction = body_data.get('direction', 0)
-                
-                bullet = room.create_bullet(x, y, direction, player_id)
-                
-                return {
-                    'statusCode': 200,
-                    'headers': {
-                        'Content-Type': 'application/json',
-                        'Access-Control-Allow-Origin': '*'
-                    },
-                    'isBase64Encoded': False,
-                    'body': json.dumps({
-                        'success': True,
-                        'bullet': asdict(bullet),
-                        'game_state': room.get_game_state()
-                    })
-                }
-            
-            elif action == 'get_state':
-                # Получить текущее состояние игры
-                return {
-                    'statusCode': 200,
-                    'headers': {
-                        'Content-Type': 'application/json',
-                        'Access-Control-Allow-Origin': '*'
-                    },
-                    'isBase64Encoded': False,
-                    'body': json.dumps({
-                        'success': True,
-                        'game_state': room.get_game_state()
-                    })
-                }
-            
-            else:
-                return {
-                    'statusCode': 400,
-                    'headers': {
-                        'Content-Type': 'application/json',
-                        'Access-Control-Allow-Origin': '*'
-                    },
-                    'isBase64Encoded': False,
-                    'body': json.dumps({'error': 'Unknown action'})
-                }
-                
-        except Exception as e:
             return {
-                'statusCode': 500,
-                'headers': {
-                    'Content-Type': 'application/json',
-                    'Access-Control-Allow-Origin': '*'
-                },
-                'isBase64Encoded': False,
-                'body': json.dumps({'error': str(e)})
+                'statusCode': 200,
+                'headers': cors_headers,
+                'body': json.dumps({
+                    'success': True,
+                    'player': asdict(player),
+                    'game_state': {
+                        'players': [asdict(p) for p in room.players.values()],
+                        'objects': [asdict(o) for o in room.objects],
+                        'bullets': [asdict(b) for b in room.bullets]
+                    }
+                })
+            }
+        
+        elif action == 'move':
+            player_id = body.get('playerId')
+            if player_id in room.players:
+                room.players[player_id].x = body.get('x', room.players[player_id].x)
+                room.players[player_id].y = body.get('y', room.players[player_id].y)
+                room.players[player_id].last_action = time.time()
+            
+            return {
+                'statusCode': 200,
+                'headers': cors_headers,
+                'body': json.dumps({
+                    'success': True,
+                    'game_state': {
+                        'players': [asdict(p) for p in room.players.values()],
+                        'objects': [asdict(o) for o in room.objects],
+                        'bullets': [asdict(b) for b in room.bullets]
+                    }
+                })
+            }
+        
+        elif action == 'spawn_object':
+            obj_type = body.get('object_type', 'tree')
+            emoji_map = {'tree': '🌲', 'rock': '🪨', 'house': '🏠', 'flower': '🌸'}
+            
+            obj = GameObject(
+                type=obj_type,
+                emoji=emoji_map.get(obj_type, '📦'),
+                x=body.get('x', 400),
+                y=body.get('y', 300)
+            )
+            room.objects.append(obj)
+            
+            return {
+                'statusCode': 200,
+                'headers': cors_headers,
+                'body': json.dumps({
+                    'success': True,
+                    'object': asdict(obj),
+                    'game_state': {
+                        'players': [asdict(p) for p in room.players.values()],
+                        'objects': [asdict(o) for o in room.objects],
+                        'bullets': [asdict(b) for b in room.bullets]
+                    }
+                })
+            }
+        
+        elif action == 'shoot':
+            bullet = Bullet(
+                id=f"bullet_{int(time.time() * 1000)}",
+                x=body.get('x', 400),
+                y=body.get('y', 300),
+                dx=body.get('dx', 0),
+                dy=body.get('dy', 0),
+                owner_id=body.get('playerId', '')
+            )
+            room.bullets.append(bullet)
+            
+            return {
+                'statusCode': 200,
+                'headers': cors_headers,
+                'body': json.dumps({
+                    'success': True,
+                    'bullet': asdict(bullet),
+                    'game_state': {
+                        'players': [asdict(p) for p in room.players.values()],
+                        'objects': [asdict(o) for o in room.objects],
+                        'bullets': [asdict(b) for b in room.bullets]
+                    }
+                })
+            }
+        
+        elif action == 'get_state':
+            return {
+                'statusCode': 200,
+                'headers': cors_headers,
+                'body': json.dumps({
+                    'success': True,
+                    'game_state': {
+                        'players': [asdict(p) for p in room.players.values()],
+                        'objects': [asdict(o) for o in room.objects],
+                        'bullets': [asdict(b) for b in room.bullets]
+                    }
+                })
+            }
+        
+        else:
+            return {
+                'statusCode': 400,
+                'headers': cors_headers,
+                'body': json.dumps({'success': False, 'error': 'Unknown action'})
             }
     
-    return {
-        'statusCode': 405,
-        'headers': {
-            'Content-Type': 'application/json',
-            'Access-Control-Allow-Origin': '*'
-        },
-        'isBase64Encoded': False,
-        'body': json.dumps({'error': 'Method not allowed'})
-    }
+    except Exception as e:
+        return {
+            'statusCode': 500,
+            'headers': cors_headers,
+            'body': json.dumps({'success': False, 'error': str(e)})
+        }
