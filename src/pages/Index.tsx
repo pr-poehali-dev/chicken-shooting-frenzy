@@ -971,6 +971,315 @@ const Index = () => {
     return () => clearInterval(syncInterval);
   }, [currentGame, multiplayerData.isPlaying, multiplayerData.isConnected]);
 
+  // Управление для режима зомби
+  useEffect(() => {
+    if (currentGame !== 'zombie' || !zombieData.isPlaying) return;
+
+    const handleKeyPress = (e: KeyboardEvent) => {
+      const moveSpeed = 15;
+      setZombieData(prev => {
+        let newX = prev.playerX;
+        let newY = prev.playerY;
+
+        switch (e.key.toLowerCase()) {
+          case 'w':
+          case 'arrowup':
+            newY = Math.max(50, prev.playerY - moveSpeed);
+            break;
+          case 's':
+          case 'arrowdown':
+            newY = Math.min(window.innerHeight - 100, prev.playerY + moveSpeed);
+            break;
+          case 'a':
+          case 'arrowleft':
+            newX = Math.max(50, prev.playerX - moveSpeed);
+            break;
+          case 'd':
+          case 'arrowright':
+            newX = Math.min(window.innerWidth - 100, prev.playerX + moveSpeed);
+            break;
+          case ' ':
+            e.preventDefault();
+            if (prev.ammo > 0) {
+              // Стреляем в ближайшего зомби
+              const closestZombie = prev.zombies.reduce((closest, zombie) => {
+                const dist = Math.hypot(zombie.x - prev.playerX, zombie.y - prev.playerY);
+                const closestDist = Math.hypot(closest.x - prev.playerX, closest.y - prev.playerY);
+                return dist < closestDist ? zombie : closest;
+              }, prev.zombies[0]);
+
+              if (closestZombie) {
+                const updatedZombies = prev.zombies.map(z => 
+                  z.id === closestZombie.id ? { ...z, hp: z.hp - 25 } : z
+                ).filter(z => z.hp > 0);
+
+                return {
+                  ...prev,
+                  zombies: updatedZombies,
+                  ammo: prev.ammo - 1,
+                  kills: updatedZombies.length < prev.zombies.length ? prev.kills + 1 : prev.kills
+                };
+              }
+            }
+            break;
+        }
+
+        return { ...prev, playerX: newX, playerY: newY };
+      });
+    };
+
+    window.addEventListener('keydown', handleKeyPress);
+    return () => window.removeEventListener('keydown', handleKeyPress);
+  }, [currentGame, zombieData.isPlaying]);
+
+  // Логика зомби волн
+  useEffect(() => {
+    if (currentGame !== 'zombie' || !zombieData.isPlaying) return;
+
+    const gameInterval = setInterval(() => {
+      setZombieData(prev => {
+        // Двигаем зомби к игроку
+        const updatedZombies = prev.zombies.map(zombie => {
+          const dx = prev.playerX - zombie.x;
+          const dy = prev.playerY - zombie.y;
+          const dist = Math.hypot(dx, dy);
+          
+          if (dist > 50) {
+            return {
+              ...zombie,
+              x: zombie.x + (dx / dist) * zombie.speed,
+              y: zombie.y + (dy / dist) * zombie.speed
+            };
+          }
+          return zombie;
+        });
+
+        // Проверяем столкновения (game over)
+        const collision = updatedZombies.some(z => 
+          Math.hypot(z.x - prev.playerX, z.y - prev.playerY) < 40
+        );
+
+        if (collision) {
+          alert(`${language === 'ru' ? 'Игра окончена! Волна' : 'Game Over! Wave'}: ${prev.wave}, ${language === 'ru' ? 'Убито' : 'Kills'}: ${prev.kills}`);
+          setCurrentGame('menu');
+          return prev;
+        }
+
+        // Если все зомби убиты - новая волна
+        if (updatedZombies.length === 0) {
+          const newWave = prev.wave + 1;
+          return {
+            ...prev,
+            wave: newWave,
+            zombies: Array.from({ length: 3 + newWave }, (_, i) => ({
+              id: Date.now() + i,
+              x: Math.random() * (window.innerWidth - 200) + 100,
+              y: Math.random() * (window.innerHeight - 200) + 100,
+              hp: 30 + (newWave * 10),
+              speed: 1 + (newWave * 0.2)
+            })),
+            ammo: prev.ammo + 30
+          };
+        }
+
+        return {
+          ...prev,
+          zombies: updatedZombies,
+          gameTime: prev.gameTime + 0.1
+        };
+      });
+    }, 100);
+
+    return () => clearInterval(gameInterval);
+  }, [currentGame, zombieData.isPlaying, language]);
+
+  // Управление для режима босса
+  useEffect(() => {
+    if (currentGame !== 'boss' || !bossData.isPlaying) return;
+
+    const handleKeyPress = (e: KeyboardEvent) => {
+      const moveSpeed = 15;
+      setBossData(prev => {
+        let newX = prev.playerX;
+        let newY = prev.playerY;
+
+        switch (e.key.toLowerCase()) {
+          case 'w':
+          case 'arrowup':
+            newY = Math.max(50, prev.playerY - moveSpeed);
+            break;
+          case 's':
+          case 'arrowdown':
+            newY = Math.min(window.innerHeight - 100, prev.playerY + moveSpeed);
+            break;
+          case 'a':
+          case 'arrowleft':
+            newX = Math.max(50, prev.playerX - moveSpeed);
+            break;
+          case 'd':
+          case 'arrowright':
+            newX = Math.min(window.innerWidth - 100, prev.playerX + moveSpeed);
+            break;
+          case ' ':
+            e.preventDefault();
+            if (prev.ammo > 0) {
+              return {
+                ...prev,
+                bossHp: Math.max(0, prev.bossHp - 20),
+                ammo: prev.ammo - 1
+              };
+            }
+            break;
+        }
+
+        return { ...prev, playerX: newX, playerY: newY };
+      });
+    };
+
+    window.addEventListener('keydown', handleKeyPress);
+    return () => window.removeEventListener('keydown', handleKeyPress);
+  }, [currentGame, bossData.isPlaying]);
+
+  // Логика битвы с боссом
+  useEffect(() => {
+    if (currentGame !== 'boss' || !bossData.isPlaying) return;
+
+    const gameInterval = setInterval(() => {
+      setBossData(prev => {
+        // Босс двигается случайным образом
+        const newBossX = Math.max(100, Math.min(window.innerWidth - 200, prev.bossX + (Math.random() - 0.5) * 20));
+        const newBossY = Math.max(50, Math.min(300, prev.bossY + (Math.random() - 0.5) * 20));
+
+        // Босс атакует игрока
+        const distToBoss = Math.hypot(prev.bossX - prev.playerX, prev.bossY - prev.playerY);
+        let newPlayerHp = prev.playerHp;
+        
+        if (distToBoss < 150 && Math.random() < 0.1) {
+          newPlayerHp = Math.max(0, prev.playerHp - 10);
+        }
+
+        // Проверка победы/поражения
+        if (prev.bossHp <= 0) {
+          alert(`${language === 'ru' ? '🎉 Победа! Босс повержен!' : '🎉 Victory! Boss defeated!'}`);
+          setCoins(c => c + 500);
+          setCurrentGame('menu');
+          return prev;
+        }
+
+        if (newPlayerHp <= 0) {
+          alert(`${language === 'ru' ? '💀 Поражение! Босс победил!' : '💀 Defeat! Boss won!'}`);
+          setCurrentGame('menu');
+          return prev;
+        }
+
+        // Смена фазы босса
+        const newPhase = prev.bossHp < prev.bossMaxHp * 0.5 ? 2 : 1;
+
+        return {
+          ...prev,
+          bossX: newBossX,
+          bossY: newBossY,
+          playerHp: newPlayerHp,
+          phase: newPhase
+        };
+      });
+    }, 100);
+
+    return () => clearInterval(gameInterval);
+  }, [currentGame, bossData.isPlaying, language]);
+
+  // Управление для режима сбора монет
+  useEffect(() => {
+    if (currentGame !== 'coins' || !coinGameData.isPlaying) return;
+
+    const handleKeyPress = (e: KeyboardEvent) => {
+      const moveSpeed = 15;
+      setCoinGameData(prev => {
+        let newX = prev.playerX;
+        let newY = prev.playerY;
+
+        switch (e.key.toLowerCase()) {
+          case 'w':
+          case 'arrowup':
+            newY = Math.max(50, prev.playerY - moveSpeed);
+            break;
+          case 's':
+          case 'arrowdown':
+            newY = Math.min(window.innerHeight - 100, prev.playerY + moveSpeed);
+            break;
+          case 'a':
+          case 'arrowleft':
+            newX = Math.max(50, prev.playerX - moveSpeed);
+            break;
+          case 'd':
+          case 'arrowright':
+            newX = Math.min(window.innerWidth - 100, prev.playerX + moveSpeed);
+            break;
+        }
+
+        // Проверяем сбор монет
+        const remainingCoins = prev.coins.filter(coin => {
+          const dist = Math.hypot(coin.x - newX, coin.y - newY);
+          if (dist < 40) {
+            return false; // Монета собрана
+          }
+          return true;
+        });
+
+        const coinsCollected = prev.coins.length - remainingCoins.length;
+
+        return {
+          ...prev,
+          playerX: newX,
+          playerY: newY,
+          coins: remainingCoins,
+          collected: prev.collected + coinsCollected
+        };
+      });
+    };
+
+    window.addEventListener('keydown', handleKeyPress);
+    return () => window.removeEventListener('keydown', handleKeyPress);
+  }, [currentGame, coinGameData.isPlaying]);
+
+  // Логика таймера и спавна монет
+  useEffect(() => {
+    if (currentGame !== 'coins' || !coinGameData.isPlaying) return;
+
+    const gameInterval = setInterval(() => {
+      setCoinGameData(prev => {
+        const newTimeLeft = Math.max(0, prev.timeLeft - 1);
+
+        // Игра окончена
+        if (newTimeLeft === 0) {
+          alert(`${language === 'ru' ? 'Время вышло! Собрано монет' : 'Time is up! Coins collected'}: ${prev.collected}`);
+          setCoins(c => c + prev.collected * 10);
+          setCurrentGame('menu');
+          return prev;
+        }
+
+        // Спавним новые монеты если их мало
+        let newCoins = prev.coins;
+        if (newCoins.length < 5) {
+          newCoins = [...newCoins, {
+            id: Date.now(),
+            x: Math.random() * (window.innerWidth - 200) + 100,
+            y: Math.random() * (window.innerHeight - 200) + 100,
+            value: Math.random() < 0.2 ? 10 : 1 // 20% шанс на алмаз
+          }];
+        }
+
+        return {
+          ...prev,
+          timeLeft: newTimeLeft,
+          coins: newCoins
+        };
+      });
+    }, 1000);
+
+    return () => clearInterval(gameInterval);
+  }, [currentGame, coinGameData.isPlaying, language]);
+
   // Логика PvP арены
   useEffect(() => {
     if (currentGame !== 'pvp' || !pvpData.isPlaying) return;
@@ -1681,6 +1990,353 @@ const Index = () => {
                 ⬇️
               </Button>
               <div></div>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    // Режим зомби-волн
+    if (currentGame === 'zombie') {
+      return (
+        <div className="fixed inset-0 bg-gradient-to-br from-gray-800 via-gray-900 to-black z-50">
+          {/* UI панель */}
+          <div className="absolute top-4 left-4 bg-black/80 text-white p-4 rounded-lg z-[100]">
+            <p className="font-bold text-red-500">🧟 {language === 'ru' ? 'Зомби Волны' : 'Zombie Waves'}</p>
+            <p>💀 {language === 'ru' ? 'Волна' : 'Wave'}: {zombieData.wave}</p>
+            <p>🎯 {language === 'ru' ? 'Убито' : 'Kills'}: {zombieData.kills}</p>
+            <p>🔫 {language === 'ru' ? 'Патроны' : 'Ammo'}: {zombieData.ammo}</p>
+            <p>⏱️ {language === 'ru' ? 'Время' : 'Time'}: {Math.floor(zombieData.gameTime / 60)}:{(zombieData.gameTime % 60).toString().padStart(2, '0')}</p>
+          </div>
+
+          {/* Кнопка выхода */}
+          <div className="absolute top-4 right-4 z-[100]">
+            <Button 
+              onClick={() => setCurrentGame('menu')} 
+              variant="destructive" 
+              size="sm"
+              className="pointer-events-auto"
+              style={{ pointerEvents: 'auto' }}
+            >
+              {language === 'ru' ? '← Выход' : '← Exit'}
+            </Button>
+          </div>
+
+          {/* Игровое поле */}
+          <div className="w-full h-full relative overflow-hidden">
+            {/* Игрок */}
+            <div
+              className="absolute text-5xl transition-all duration-100"
+              style={{ left: `${zombieData.playerX}px`, top: `${zombieData.playerY}px` }}
+            >
+              🐔
+            </div>
+
+            {/* Зомби */}
+            {zombieData.zombies.map((zombie) => (
+              <div
+                key={zombie.id}
+                className="absolute text-4xl animate-pulse"
+                style={{ left: `${zombie.x}px`, top: `${zombie.y}px` }}
+              >
+                🧟
+                <div className="w-12 bg-gray-600 rounded-full h-1 mt-1">
+                  <div 
+                    className="bg-green-500 h-1 rounded-full transition-all" 
+                    style={{ width: `${(zombie.hp / 30) * 100}%` }}
+                  ></div>
+                </div>
+              </div>
+            ))}
+
+            {/* Инструкция */}
+            <div className="absolute bottom-10 left-1/2 transform -translate-x-1/2 text-center hidden md:block">
+              <div className="bg-black/70 text-white rounded-lg p-4">
+                <p className="font-bold mb-2">🎮 {language === 'ru' ? 'Управление' : 'Controls'}</p>
+                <div className="text-sm space-y-1">
+                  <p>WASD {language === 'ru' ? '- движение' : '- move'}</p>
+                  <p>{language === 'ru' ? 'Пробел - стрелять' : 'Space - shoot'}</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Мобильное управление */}
+            <div className="absolute bottom-4 left-4 md:hidden">
+              <div className="grid grid-cols-3 gap-2">
+                <div></div>
+                <Button size="sm" onClick={() => {
+                  const newY = Math.max(50, zombieData.playerY - 20);
+                  setZombieData(prev => ({ ...prev, playerY: newY }));
+                }}>⬆️</Button>
+                <div></div>
+                <Button size="sm" onClick={() => {
+                  const newX = Math.max(50, zombieData.playerX - 20);
+                  setZombieData(prev => ({ ...prev, playerX: newX }));
+                }}>⬅️</Button>
+                <Button size="sm" onClick={() => {
+                  if (zombieData.ammo > 0) {
+                    const closestZombie = zombieData.zombies[0];
+                    if (closestZombie) {
+                      const updatedZombies = zombieData.zombies.map(z => 
+                        z.id === closestZombie.id ? { ...z, hp: z.hp - 25 } : z
+                      ).filter(z => z.hp > 0);
+                      setZombieData(prev => ({
+                        ...prev,
+                        zombies: updatedZombies,
+                        ammo: prev.ammo - 1,
+                        kills: updatedZombies.length < prev.zombies.length ? prev.kills + 1 : prev.kills
+                      }));
+                    }
+                  }
+                }}>🔫</Button>
+                <Button size="sm" onClick={() => {
+                  const newX = Math.min(window.innerWidth - 100, zombieData.playerX + 20);
+                  setZombieData(prev => ({ ...prev, playerX: newX }));
+                }}>➡️</Button>
+                <div></div>
+                <Button size="sm" onClick={() => {
+                  const newY = Math.min(window.innerHeight - 100, zombieData.playerY + 20);
+                  setZombieData(prev => ({ ...prev, playerY: newY }));
+                }}>⬇️</Button>
+                <div></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    // Режим битвы с боссом
+    if (currentGame === 'boss') {
+      return (
+        <div className="fixed inset-0 bg-gradient-to-br from-purple-900 via-red-900 to-black z-50">
+          {/* UI панель */}
+          <div className="absolute top-4 left-4 bg-black/80 text-white p-4 rounded-lg z-[100]">
+            <p className="font-bold text-purple-400">👹 {language === 'ru' ? 'Битва с Боссом' : 'Boss Battle'}</p>
+            <p>💜 {language === 'ru' ? 'Здоровье игрока' : 'Player HP'}: {bossData.playerHp}/100</p>
+            <p>🔫 {language === 'ru' ? 'Патроны' : 'Ammo'}: {bossData.ammo}</p>
+            <p>⚡ {language === 'ru' ? 'Фаза' : 'Phase'}: {bossData.phase}</p>
+            <div className="mt-2">
+              <p className="text-xs text-gray-400">{language === 'ru' ? 'HP Босса' : 'Boss HP'}</p>
+              <div className="w-full bg-gray-600 rounded-full h-3">
+                <div 
+                  className="bg-red-500 h-3 rounded-full transition-all" 
+                  style={{ width: `${(bossData.bossHp / bossData.bossMaxHp) * 100}%` }}
+                ></div>
+              </div>
+              <p className="text-xs mt-1">{bossData.bossHp} / {bossData.bossMaxHp}</p>
+            </div>
+          </div>
+
+          {/* Кнопка выхода */}
+          <div className="absolute top-4 right-4 z-[100]">
+            <Button 
+              onClick={() => setCurrentGame('menu')} 
+              variant="destructive" 
+              size="sm"
+              className="pointer-events-auto"
+              style={{ pointerEvents: 'auto' }}
+            >
+              {language === 'ru' ? '← Выход' : '← Exit'}
+            </Button>
+          </div>
+
+          {/* Игровое поле */}
+          <div className="w-full h-full relative overflow-hidden">
+            {/* Игрок */}
+            <div
+              className="absolute text-5xl transition-all duration-100"
+              style={{ left: `${bossData.playerX}px`, top: `${bossData.playerY}px` }}
+            >
+              🐔
+            </div>
+
+            {/* Босс */}
+            <div
+              className="absolute text-8xl animate-bounce"
+              style={{ left: `${bossData.bossX}px`, top: `${bossData.bossY}px` }}
+            >
+              👹
+            </div>
+
+            {/* Инструкция */}
+            <div className="absolute bottom-10 left-1/2 transform -translate-x-1/2 text-center hidden md:block">
+              <div className="bg-black/70 text-white rounded-lg p-4">
+                <p className="font-bold mb-2">🎮 {language === 'ru' ? 'Управление' : 'Controls'}</p>
+                <div className="text-sm space-y-1">
+                  <p>WASD {language === 'ru' ? '- движение' : '- move'}</p>
+                  <p>{language === 'ru' ? 'Пробел - стрелять' : 'Space - shoot'}</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Мобильное управление */}
+            <div className="absolute bottom-4 left-4 md:hidden">
+              <div className="grid grid-cols-3 gap-2">
+                <div></div>
+                <Button size="sm" onClick={() => {
+                  const newY = Math.max(50, bossData.playerY - 20);
+                  setBossData(prev => ({ ...prev, playerY: newY }));
+                }}>⬆️</Button>
+                <div></div>
+                <Button size="sm" onClick={() => {
+                  const newX = Math.max(50, bossData.playerX - 20);
+                  setBossData(prev => ({ ...prev, playerX: newX }));
+                }}>⬅️</Button>
+                <Button size="sm" onClick={() => {
+                  if (bossData.ammo > 0) {
+                    setBossData(prev => ({
+                      ...prev,
+                      bossHp: Math.max(0, prev.bossHp - 20),
+                      ammo: prev.ammo - 1
+                    }));
+                  }
+                }}>🔫</Button>
+                <Button size="sm" onClick={() => {
+                  const newX = Math.min(window.innerWidth - 100, bossData.playerX + 20);
+                  setBossData(prev => ({ ...prev, playerX: newX }));
+                }}>➡️</Button>
+                <div></div>
+                <Button size="sm" onClick={() => {
+                  const newY = Math.min(window.innerHeight - 100, bossData.playerY + 20);
+                  setBossData(prev => ({ ...prev, playerY: newY }));
+                }}>⬇️</Button>
+                <div></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    // Режим сбора монет
+    if (currentGame === 'coins') {
+      return (
+        <div className="fixed inset-0 bg-gradient-to-br from-yellow-400 via-orange-400 to-yellow-500 z-50">
+          {/* UI панель */}
+          <div className="absolute top-4 left-4 bg-black/80 text-white p-4 rounded-lg z-[100]">
+            <p className="font-bold text-yellow-400">🪙 {language === 'ru' ? 'Сбор Монет' : 'Coin Collector'}</p>
+            <p>💰 {language === 'ru' ? 'Собрано' : 'Collected'}: {coinGameData.collected}</p>
+            <p>⏱️ {language === 'ru' ? 'Время' : 'Time'}: {coinGameData.timeLeft}s</p>
+            <p className="text-xs text-gray-300 mt-2">
+              {language === 'ru' ? 'Собери максимум монет!' : 'Collect maximum coins!'}
+            </p>
+          </div>
+
+          {/* Кнопка выхода */}
+          <div className="absolute top-4 right-4 z-[100]">
+            <Button 
+              onClick={() => setCurrentGame('menu')} 
+              variant="destructive" 
+              size="sm"
+              className="pointer-events-auto"
+              style={{ pointerEvents: 'auto' }}
+            >
+              {language === 'ru' ? '← Выход' : '← Exit'}
+            </Button>
+          </div>
+
+          {/* Игровое поле */}
+          <div className="w-full h-full relative overflow-hidden">
+            {/* Игрок */}
+            <div
+              className="absolute text-5xl transition-all duration-100"
+              style={{ left: `${coinGameData.playerX}px`, top: `${coinGameData.playerY}px` }}
+            >
+              🐔
+            </div>
+
+            {/* Монеты */}
+            {coinGameData.coins.map((coin) => (
+              <div
+                key={coin.id}
+                className="absolute text-4xl animate-pulse"
+                style={{ left: `${coin.x}px`, top: `${coin.y}px` }}
+              >
+                {coin.value > 5 ? '💎' : '🪙'}
+              </div>
+            ))}
+
+            {/* Инструкция */}
+            <div className="absolute bottom-10 left-1/2 transform -translate-x-1/2 text-center hidden md:block">
+              <div className="bg-black/70 text-white rounded-lg p-4">
+                <p className="font-bold mb-2">🎮 {language === 'ru' ? 'Управление' : 'Controls'}</p>
+                <div className="text-sm space-y-1">
+                  <p>WASD {language === 'ru' ? '- движение' : '- move'}</p>
+                  <p>{language === 'ru' ? 'Собирай монеты!' : 'Collect coins!'}</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Мобильное управление */}
+            <div className="absolute bottom-4 left-4 md:hidden">
+              <div className="grid grid-cols-3 gap-2">
+                <div></div>
+                <Button size="sm" onClick={() => {
+                  const newY = Math.max(50, coinGameData.playerY - 20);
+                  setCoinGameData(prev => {
+                    const remainingCoins = prev.coins.filter(coin => {
+                      const dist = Math.hypot(coin.x - prev.playerX, coin.y - newY);
+                      return dist >= 40;
+                    });
+                    return {
+                      ...prev,
+                      playerY: newY,
+                      coins: remainingCoins,
+                      collected: prev.collected + (prev.coins.length - remainingCoins.length)
+                    };
+                  });
+                }}>⬆️</Button>
+                <div></div>
+                <Button size="sm" onClick={() => {
+                  const newX = Math.max(50, coinGameData.playerX - 20);
+                  setCoinGameData(prev => {
+                    const remainingCoins = prev.coins.filter(coin => {
+                      const dist = Math.hypot(coin.x - newX, coin.y - prev.playerY);
+                      return dist >= 40;
+                    });
+                    return {
+                      ...prev,
+                      playerX: newX,
+                      coins: remainingCoins,
+                      collected: prev.collected + (prev.coins.length - remainingCoins.length)
+                    };
+                  });
+                }}>⬅️</Button>
+                <div></div>
+                <Button size="sm" onClick={() => {
+                  const newX = Math.min(window.innerWidth - 100, coinGameData.playerX + 20);
+                  setCoinGameData(prev => {
+                    const remainingCoins = prev.coins.filter(coin => {
+                      const dist = Math.hypot(coin.x - newX, coin.y - prev.playerY);
+                      return dist >= 40;
+                    });
+                    return {
+                      ...prev,
+                      playerX: newX,
+                      coins: remainingCoins,
+                      collected: prev.collected + (prev.coins.length - remainingCoins.length)
+                    };
+                  });
+                }}>➡️</Button>
+                <div></div>
+                <Button size="sm" onClick={() => {
+                  const newY = Math.min(window.innerHeight - 100, coinGameData.playerY + 20);
+                  setCoinGameData(prev => {
+                    const remainingCoins = prev.coins.filter(coin => {
+                      const dist = Math.hypot(coin.x - prev.playerX, coin.y - newY);
+                      return dist >= 40;
+                    });
+                    return {
+                      ...prev,
+                      playerY: newY,
+                      coins: remainingCoins,
+                      collected: prev.collected + (prev.coins.length - remainingCoins.length)
+                    };
+                  });
+                }}>⬇️</Button>
+                <div></div>
+              </div>
             </div>
           </div>
         </div>
