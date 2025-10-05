@@ -119,10 +119,7 @@ const GoogleAuth = ({ onLogin, onLogout, user, gameData }: GoogleAuthProps) => {
                 Подключение...
               </div>
             ) : (
-              <div className="flex items-center gap-2">
-                <Icon name="Mail" size={20} />
-                Войти через Google
-              </div>
+              <div className="flex items-center gap-2">!!!</div>
             )}
           </Button>
           
