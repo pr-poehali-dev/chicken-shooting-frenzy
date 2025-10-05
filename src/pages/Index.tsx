@@ -158,6 +158,7 @@ const Index = () => {
   // Переводы
   const t = {
     ru: {
+      // Основное
       forest: 'Лес', desert: 'Пустыня', city: 'Город', space: 'Космос', ocean: 'Океан',
       welcome: 'Добро пожаловать в мир игр! 🎮',
       chooseMode: 'Выберите режим и начните играть прямо сейчас',
@@ -167,9 +168,35 @@ const Index = () => {
       kills: 'Убийства', ammo: 'Патроны', time: 'Время', weapon: 'Оружие',
       level: 'Уровень', exp: 'Опыт', room: 'Комната', players: 'Игроков',
       connected: 'Подключен', offline: 'Офлайн', map: 'Карта', position: 'Позиция',
-      shopTitle: 'Магазин', coins: 'Монеты', buy: 'Купить', purchased: 'Куплено'
+      shopTitle: 'Магазин', coins: 'Монеты', buy: 'Купить', purchased: 'Куплено',
+      // Магазин и предметы
+      shop: 'Магазин', inventory: 'Инвентарь', stats: 'Статистика', promo: 'Промокоды',
+      common: 'Обычный', rare: 'Редкий', epic: 'Эпический', legendary: 'Легендарный',
+      weapons: 'Оружие', transport: 'Транспорт', characters: 'Персонажи',
+      active: 'Активно', choose: 'Выбрать', notPurchased: 'Не куплено',
+      // Статистика
+      gamesPlayed: 'Игр сыграно', totalKills: 'Убийств', bestTime: 'Лучшее время', totalCoins: 'Всего монет',
+      // Промокоды
+      enterPromo: 'Введите промокод', promoDesc: 'Получите бонусные монеты за активацию промокодов',
+      promoPlaceholder: 'Введите промокод...', activate: 'Активировать', usedPromos: 'Использованные промокоды:',
+      // Диалоги
+      multiplayerLogin: 'Вход в мультиплеер', enterNickname: 'Введите ваш никнейм для игры с другими игроками',
+      nicknamePlaceholder: 'Ваш ник...', connect: 'Подключиться', accountLogin: 'Вход в аккаунт',
+      loginToPlay: 'Войдите, чтобы играть в мультиплеере', username: 'Имя пользователя', password: 'Пароль',
+      loginAndPlay: 'Войти и играть', backToMenu: 'Назад в меню', cancel: 'Отмена',
+      // Игры
+      controls: 'Управление', shoot: 'Стрелять', spawnObjects: 'Спавн объектов', movement: 'движение',
+      chooseMap: 'Выберите карту:', exploreMap: 'Исследуй карту',
+      // Алерты
+      fillAllFields: 'Заполните все поля!', regSuccess: 'Регистрация успешна! Добро пожаловать!',
+      enterNickMin: 'Введите ник (минимум 2 символа)!', devModeActivated: 'Режим разработчика активирован! Добро пожаловать, разработчик!',
+      promoUsed: 'Промокод уже использован!', promoActivated: 'Промокод активирован! +100 монет',
+      promoInvalid: 'Неверный промокод', itemBought: 'Куплено:', notEnoughCoins: 'Недостаточно монет!',
+      gameOver: 'Игра окончена! Вы врезались!', timeUp: 'Время вышло!', allUnlocked: 'Все персонажи разблокированы!',
+      failedConnect: 'Не удалось подключиться к серверу'
     },
     en: {
+      // Basic
       forest: 'Forest', desert: 'Desert', city: 'City', space: 'Space', ocean: 'Ocean',
       welcome: 'Welcome to the world of games! 🎮',
       chooseMode: 'Choose a mode and start playing right now',
@@ -179,7 +206,32 @@ const Index = () => {
       kills: 'Kills', ammo: 'Ammo', time: 'Time', weapon: 'Weapon',
       level: 'Level', exp: 'XP', room: 'Room', players: 'Players',
       connected: 'Connected', offline: 'Offline', map: 'Map', position: 'Position',
-      shopTitle: 'Shop', coins: 'Coins', buy: 'Buy', purchased: 'Purchased'
+      shopTitle: 'Shop', coins: 'Coins', buy: 'Buy', purchased: 'Purchased',
+      // Shop and items
+      shop: 'Shop', inventory: 'Inventory', stats: 'Stats', promo: 'Promo Codes',
+      common: 'Common', rare: 'Rare', epic: 'Epic', legendary: 'Legendary',
+      weapons: 'Weapons', transport: 'Transport', characters: 'Characters',
+      active: 'Active', choose: 'Choose', notPurchased: 'Not purchased',
+      // Statistics
+      gamesPlayed: 'Games Played', totalKills: 'Total Kills', bestTime: 'Best Time', totalCoins: 'Total Coins',
+      // Promo codes
+      enterPromo: 'Enter Promo Code', promoDesc: 'Get bonus coins for activating promo codes',
+      promoPlaceholder: 'Enter promo code...', activate: 'Activate', usedPromos: 'Used promo codes:',
+      // Dialogs
+      multiplayerLogin: 'Multiplayer Login', enterNickname: 'Enter your nickname to play with other players',
+      nicknamePlaceholder: 'Your nickname...', connect: 'Connect', accountLogin: 'Account Login',
+      loginToPlay: 'Login to play multiplayer', username: 'Username', password: 'Password',
+      loginAndPlay: 'Login and Play', backToMenu: 'Back to Menu', cancel: 'Cancel',
+      // Games
+      controls: 'Controls', shoot: 'Shoot', spawnObjects: 'Spawn Objects', movement: 'movement',
+      chooseMap: 'Choose map:', exploreMap: 'Explore the map',
+      // Alerts
+      fillAllFields: 'Fill all fields!', regSuccess: 'Registration successful! Welcome!',
+      enterNickMin: 'Enter nickname (min 2 characters)!', devModeActivated: 'Developer mode activated! Welcome, developer!',
+      promoUsed: 'Promo code already used!', promoActivated: 'Promo code activated! +100 coins',
+      promoInvalid: 'Invalid promo code', itemBought: 'Purchased:', notEnoughCoins: 'Not enough coins!',
+      gameOver: 'Game over! You crashed!', timeUp: 'Time is up!', allUnlocked: 'All characters unlocked!',
+      failedConnect: 'Failed to connect to server'
     }
   };
 
@@ -306,137 +358,151 @@ const Index = () => {
     }
   };
 
+  // Функция перевода редкости
+  const getRarity = (rarity: string) => {
+    const rarityMap: any = {
+      'Обычная': { ru: 'Обычная', en: 'Common' },
+      'Редкая': { ru: 'Редкая', en: 'Rare' },
+      'Эпическая': { ru: 'Эпическая', en: 'Epic' },
+      'Легендарная': { ru: 'Легендарная', en: 'Legendary' },
+      'Мифическая': { ru: 'Мифическая', en: 'Mythical' }
+    };
+    return rarityMap[rarity]?.[language] || rarity;
+  };
+
   // Магазин товаров
-  const shopItems = [
+  const getShopItems = () => [
     // Оружие
     {
       id: 1,
-      name: 'Снайперская винтовка',
+      name: language === 'ru' ? 'Снайперская винтовка' : 'Sniper Rifle',
       type: 'weapon',
       price: 500,
       image: '/img/a7f38b6b-0ef4-4eee-8148-3960f69ff529.jpg',
       rarity: 'Эпическая',
-      description: 'Точный выстрел на дальние дистанции',
+      description: language === 'ru' ? 'Точный выстрел на дальние дистанции' : 'Accurate long-range shots',
       gameId: 'sniper'
     },
     {
       id: 2,
-      name: 'Автомат',
+      name: language === 'ru' ? 'Автомат' : 'Auto Rifle',
       type: 'weapon',
       price: 800,
       image: '/img/a7f38b6b-0ef4-4eee-8148-3960f69ff529.jpg',
       rarity: 'Легендарная',
-      description: 'Высокая скорострельность',
+      description: language === 'ru' ? 'Высокая скорострельность' : 'High fire rate',
       gameId: 'automat'
     },
     {
       id: 3,
-      name: 'Дробовик',
+      name: language === 'ru' ? 'Дробовик' : 'Shotgun',
       type: 'weapon',
       price: 400,
       image: '/img/a7f38b6b-0ef4-4eee-8148-3960f69ff529.jpg',
       rarity: 'Редкая',
-      description: 'Мощный урон вблизи',
+      description: language === 'ru' ? 'Мощный урон вблизи' : 'Powerful close-range damage',
       gameId: 'shotgun'
     },
     {
       id: 4,
-      name: 'Пушка',
+      name: language === 'ru' ? 'Пушка' : 'Cannon',
       type: 'weapon',
       price: 1200,
       image: '/img/a7f38b6b-0ef4-4eee-8148-3960f69ff529.jpg',
       rarity: 'Мифическая',
-      description: 'Максимальный урон по площади',
+      description: language === 'ru' ? 'Максимальный урон по площади' : 'Maximum area damage',
       gameId: 'cannon'
     },
     // Транспорт  
     {
       id: 5,
-      name: 'Монстр трак',
+      name: language === 'ru' ? 'Монстр трак' : 'Monster Truck',
       type: 'vehicle',
       price: 600,
       image: '/img/5d22640a-5af8-46ec-b1ba-93f244fc9716.jpg',
       rarity: 'Эпическая',
-      description: '2 жизни в гонках, проезжает через препятствия',
+      description: language === 'ru' ? '2 жизни в гонках, проезжает через препятствия' : '2 lives in races, crushes obstacles',
       gameId: 'monster-truck'
     },
     {
       id: 6,
-      name: 'Гоночная машина',
+      name: language === 'ru' ? 'Гоночная машина' : 'Racing Car',
       type: 'vehicle',
       price: 900,
       image: '/img/5d22640a-5af8-46ec-b1ba-93f244fc9716.jpg',
       rarity: 'Легендарная',
-      description: 'Максимальная скорость в гонках',
+      description: language === 'ru' ? 'Максимальная скорость в гонках' : 'Maximum racing speed',
       gameId: 'racing-car'
     },
     // Персонажи
     {
       id: 7,
-      name: 'Робот',
+      name: language === 'ru' ? 'Робот' : 'Robot',
       type: 'character',
       price: 0,
       emoji: '🤖',
       rarity: 'Обычная',
-      description: 'Стандартный персонаж',
+      description: language === 'ru' ? 'Стандартный персонаж' : 'Default character',
       gameId: 'robot'
     },
     {
       id: 8,
-      name: 'Пингвин',
+      name: language === 'ru' ? 'Пингвин' : 'Penguin',
       type: 'character',
       price: 200,
       emoji: '🐧',
       rarity: 'Редкая',
-      description: 'Крутой пингвин для мультиплеера',
+      description: language === 'ru' ? 'Крутой пингвин для мультиплеера' : 'Cool penguin for multiplayer',
       gameId: 'penguin'
     },
     {
       id: 9,
-      name: 'Космонавт',
+      name: language === 'ru' ? 'Космонавт' : 'Astronaut',
       type: 'character',
       price: 300,
       emoji: '👨‍🚀',
       rarity: 'Эпическая',
-      description: 'Космический исследователь',
+      description: language === 'ru' ? 'Космический исследователь' : 'Space explorer',
       gameId: 'astronaut'
     },
     {
       id: 10,
-      name: 'Ниндзя',
+      name: language === 'ru' ? 'Ниндзя' : 'Ninja',
       type: 'character',
       price: 400,
       emoji: '🥷',
       rarity: 'Легендарная',
-      description: 'Быстрый и незаметный',
+      description: language === 'ru' ? 'Быстрый и незаметный' : 'Fast and stealthy',
       gameId: 'ninja'
     },
     {
       id: 11,
-      name: 'Панда',
+      name: language === 'ru' ? 'Панда' : 'Panda',
       type: 'character',
       price: 250,
       emoji: '🐼',
       rarity: 'Редкая',
-      description: 'Милая панда',
+      description: language === 'ru' ? 'Милая панда' : 'Cute panda',
       gameId: 'panda'
     },
     {
       id: 12,
-      name: 'Единорог',
+      name: language === 'ru' ? 'Единорог' : 'Unicorn',
       type: 'character',
       price: 500,
       emoji: '🦄',
       rarity: 'Мифическая',
-      description: 'Легендарный единорог',
+      description: language === 'ru' ? 'Легендарный единорог' : 'Legendary unicorn',
       gameId: 'unicorn'
     }
   ];
+  
+  const shopItems = getShopItems();
 
   // Регистрация
   const handleRegister = () => {
     if (!registerData.username || !registerData.email || !registerData.password) {
-      alert('❌ Заполните все поля!');
+      alert(`❌ ${t[language].fillAllFields}`);
       return;
     }
     
@@ -452,14 +518,14 @@ const Index = () => {
     
     setUser(newUser);
     setShowRegister(false);
-    alert('🎉 Регистрация успешна! Добро пожаловать!');
+    alert(`🎉 ${t[language].regSuccess}`);
     playSound('coin');
   };
 
   const handleNicknameSubmit = () => {
     const trimmedNick = nicknameInput.trim();
     if (!trimmedNick || trimmedNick.length < 2) {
-      alert('❌ Введите ник (минимум 2 символа)!');
+      alert(`❌ ${t[language].enterNickMin}`);
       return;
     }
     setNicknameInput(trimmedNick);
@@ -472,12 +538,12 @@ const Index = () => {
     const code = promoCode.toLowerCase();
     
     // Секретный промокод разработчика
-    if (code === 'разработчик пингвин') {
+    if (code === 'разработчик пингвин' || code === 'developer penguin') {
       setDevMode(true);
       setCoins(999999);
       setPromoCode('');
       playSound('coin');
-      alert('🐧 Режим разработчика активирован! Добро пожаловать, разработчик!');
+      alert(`🐧 ${t[language].devModeActivated}`);
       return;
     }
     
@@ -485,7 +551,7 @@ const Index = () => {
     
     if (usedPromoCodes.includes(code)) {
       playSound('error');
-      alert('❌ Промокод уже использован!');
+      alert(`❌ ${t[language].promoUsed}`);
       return;
     }
     
@@ -494,10 +560,10 @@ const Index = () => {
       setUsedPromoCodes(prev => [...prev, code]);
       setPromoCode('');
       playSound('coin');
-      alert('🎉 Промокод активирован! +100 монет');
+      alert(`🎉 ${t[language].promoActivated}`);
     } else {
       playSound('error');
-      alert('❌ Неверный промокод');
+      alert(`❌ ${t[language].promoInvalid}`);
     }
   };
 
@@ -520,10 +586,10 @@ const Index = () => {
       }
       
       playSound('coin');
-      alert(`🎉 Куплено: ${item.name}!`);
+      alert(`🎉 ${t[language].itemBought} ${item.name}!`);
     } else {
       playSound('error');
-      alert('❌ Недостаточно монет!');
+      alert(`❌ ${t[language].notEnoughCoins}`);
     }
   };
 
@@ -1325,10 +1391,10 @@ const Index = () => {
             {/* Инструкции */}
             <div className="absolute bottom-10 left-1/2 transform -translate-x-1/2 text-center">
               <div className="bg-black/70 text-white rounded-lg p-4">
-                <p className="font-bold mb-2">🎮 Управление курицей</p>
+                <p className="font-bold mb-2">🎮 {t[language].controls}</p>
                 <div className="text-sm space-y-1">
-                  <p>WASD или стрелки - движение</p>
-                  <p>Исследуй карту {currentMap.name}! {currentMap.emoji}</p>
+                  <p>WASD {language === 'ru' ? 'или стрелки - движение' : 'or arrows - movement'}</p>
+                  <p>{t[language].exploreMap} {currentMap.name}! {currentMap.emoji}</p>
                 </div>
               </div>
             </div>
@@ -1633,11 +1699,11 @@ const Index = () => {
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
           <div className="flex items-center space-x-2 md:space-x-4">
             <div className="w-10 h-10 md:w-12 md:h-12 bg-game-orange rounded-full flex items-center justify-center animate-bounce-in">
-              <span className="курица красная страх крутость">🐔</span>
+              <span>🐔</span>
             </div>
             <div>
               <h1 className="text-xl md:text-2xl font-extrabold text-red-800 text-center">red gan</h1>
-              <p className="text-xs md:text-sm text-gray-600">Максимальный геймплей</p>
+              <p className="text-xs md:text-sm text-gray-600">{language === 'ru' ? 'Максимальный геймплей' : 'Maximum gameplay'}</p>
             </div>
           </div>
           
@@ -1902,7 +1968,7 @@ const Index = () => {
                         setInventory(prev => ({ ...prev, items: [...prev.items, item.id] }));
                       }
                     });
-                    alert('🎉 Все персонажи разблокированы!');
+                    alert(`🎉 ${t[language].allUnlocked}`);
                   }}
                   className="w-full bg-green-500 hover:bg-green-600"
                   size="sm"
@@ -1954,12 +2020,12 @@ const Index = () => {
               <div className="text-center">
                 <h3 className="font-bold text-gray-800">👤 {accountData.username}</h3>
                 <div className="flex justify-center space-x-4 mt-2 text-sm">
-                  <span>⭐ Ур. {accountData.level}</span>
-                  <span>🎯 {accountData.totalKills} убийств</span>
-                  <span>🏆 {accountData.gamesWon} побед</span>
+                  <span>⭐ {language === 'ru' ? 'Ур.' : 'Lvl'} {accountData.level}</span>
+                  <span>🎯 {accountData.totalKills} {language === 'ru' ? 'убийств' : 'kills'}</span>
+                  <span>🏆 {accountData.gamesWon} {language === 'ru' ? 'побед' : 'wins'}</span>
                 </div>
                 <div className="mt-2">
-                  <div className="text-xs text-gray-600">Опыт: {accountData.xp % 100}/100</div>
+                  <div className="text-xs text-gray-600">{t[language].exp}: {accountData.xp % 100}/100</div>
                   <div className="w-full bg-gray-200 rounded-full h-2 mt-1">
                     <div 
                       className="bg-blue-500 h-2 rounded-full transition-all duration-300" 
@@ -2016,7 +2082,7 @@ const Index = () => {
                 
                 {/* Выбор карты */}
                 <div className="mb-4">
-                  <p className="text-sm font-medium mb-2">Выберите карту:</p>
+                  <p className="text-sm font-medium mb-2">{t[language].chooseMap}</p>
                   <div className="flex justify-center space-x-1 mb-2">
                     {sandboxMaps.map(map => (
                       <button
@@ -2131,10 +2197,10 @@ const Index = () => {
         {/* Tabs */}
         <Tabs defaultValue="shop" className="max-w-6xl mx-auto">
           <TabsList className="grid w-full grid-cols-2 md:grid-cols-4 mb-6 md:mb-8">
-            <TabsTrigger value="shop">🛒 Магазин</TabsTrigger>
-            <TabsTrigger value="inventory">🎒 Инвентарь</TabsTrigger>
-            <TabsTrigger value="stats">📊 Статистика</TabsTrigger>
-            <TabsTrigger value="promo">🎁 Промокоды</TabsTrigger>
+            <TabsTrigger value="shop">🛒 {t[language].shop}</TabsTrigger>
+            <TabsTrigger value="inventory">🎒 {t[language].inventory}</TabsTrigger>
+            <TabsTrigger value="stats">📊 {t[language].stats}</TabsTrigger>
+            <TabsTrigger value="promo">🎁 {t[language].promo}</TabsTrigger>
           </TabsList>
 
           <TabsContent value="shop">
@@ -2154,7 +2220,7 @@ const Index = () => {
                         item.rarity === 'Легендарная' ? 'secondary' :
                         item.rarity === 'Эпическая' ? 'outline' : 'default'
                       }>
-                        {item.rarity}
+                        {getRarity(item.rarity)}
                       </Badge>
                     </div>
                   </CardHeader>
@@ -2167,7 +2233,7 @@ const Index = () => {
                         disabled={inventory.items.includes(item.id)}
                         size={isMobile ? "sm" : "default"}
                       >
-                        {inventory.items.includes(item.id) ? 'Куплено' : 'Купить'}
+                        {inventory.items.includes(item.id) ? t[language].purchased : t[language].buy}
                       </Button>
                     </div>
                   </CardContent>
@@ -2180,7 +2246,7 @@ const Index = () => {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8">
               <Card>
                 <CardHeader>
-                  <CardTitle>🔫 Оружие</CardTitle>
+                  <CardTitle>🔫 {t[language].weapons}</CardTitle>
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-3">
@@ -2192,12 +2258,12 @@ const Index = () => {
                           size="sm"
                           onClick={() => setInventory(prev => ({ ...prev, activeWeapon: item.gameId }))}
                         >
-                          {inventory.activeWeapon === item.gameId ? 'Активно' : 'Выбрать'}
+                          {inventory.activeWeapon === item.gameId ? t[language].active : t[language].choose}
                         </Button>
                       </div>
                     ))}
                     {shopItems.filter(item => item.type === 'weapon' && inventory.items.includes(item.id)).length === 0 && (
-                      <p className="text-gray-500 text-center py-4">Оружие не куплено</p>
+                      <p className="text-gray-500 text-center py-4">{language === 'ru' ? 'Оружие не куплено' : 'No weapons purchased'}</p>
                     )}
                   </div>
                 </CardContent>
@@ -2205,7 +2271,7 @@ const Index = () => {
 
               <Card>
                 <CardHeader>
-                  <CardTitle>🚗 Транспорт</CardTitle>
+                  <CardTitle>🚗 {t[language].transport}</CardTitle>
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-3">
@@ -2217,12 +2283,12 @@ const Index = () => {
                           size="sm"
                           onClick={() => setInventory(prev => ({ ...prev, activeVehicle: item.gameId }))}
                         >
-                          {inventory.activeVehicle === item.gameId ? 'Активно' : 'Выбрать'}
+                          {inventory.activeVehicle === item.gameId ? t[language].active : t[language].choose}
                         </Button>
                       </div>
                     ))}
                     {shopItems.filter(item => item.type === 'vehicle' && inventory.items.includes(item.id)).length === 0 && (
-                      <p className="text-gray-500 text-center py-4">Транспорт не куплен</p>
+                      <p className="text-gray-500 text-center py-4">{language === 'ru' ? 'Транспорт не куплен' : 'No transport purchased'}</p>
                     )}
                   </div>
                 </CardContent>
@@ -2234,7 +2300,7 @@ const Index = () => {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
               <Card>
                 <CardHeader className="pb-2">
-                  <CardTitle className="text-lg">🎮 Игр сыграно</CardTitle>
+                  <CardTitle className="text-lg">🎮 {t[language].gamesPlayed}</CardTitle>
                 </CardHeader>
                 <CardContent>
                   <div className="text-2xl md:text-3xl font-bold text-game-orange">{stats.gamesPlayed}</div>
@@ -2243,7 +2309,7 @@ const Index = () => {
 
               <Card>
                 <CardHeader className="pb-2">
-                  <CardTitle className="text-lg">💀 Убийств</CardTitle>
+                  <CardTitle className="text-lg">💀 {t[language].totalKills}</CardTitle>
                 </CardHeader>
                 <CardContent>
                   <div className="text-2xl md:text-3xl font-bold text-red-500">{stats.totalKills}</div>
@@ -2252,7 +2318,7 @@ const Index = () => {
 
               <Card>
                 <CardHeader className="pb-2">
-                  <CardTitle className="text-lg">⏱️ Лучшее время</CardTitle>
+                  <CardTitle className="text-lg">⏱️ {t[language].bestTime}</CardTitle>
                 </CardHeader>
                 <CardContent>
                   <div className="text-2xl md:text-3xl font-bold text-blue-500">{stats.bestTime}с</div>
@@ -2261,7 +2327,7 @@ const Index = () => {
 
               <Card>
                 <CardHeader className="pb-2">
-                  <CardTitle className="text-lg">💰 Всего монет</CardTitle>
+                  <CardTitle className="text-lg">💰 {t[language].totalCoins}</CardTitle>
                 </CardHeader>
                 <CardContent>
                   <div className="text-2xl md:text-3xl font-bold text-yellow-500">{stats.totalCoins}</div>
@@ -2273,24 +2339,24 @@ const Index = () => {
           <TabsContent value="promo">
             <Card className="max-w-md mx-auto">
               <CardHeader>
-                <CardTitle>🎁 Введите промокод</CardTitle>
+                <CardTitle>🎁 {t[language].enterPromo}</CardTitle>
                 <CardDescription>
-                  Получите бонусные монеты за активацию промокодов
+                  {t[language].promoDesc}
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 <Input
-                  placeholder="Введите промокод..."
+                  placeholder={t[language].promoPlaceholder}
                   value={promoCode}
                   onChange={(e) => setPromoCode(e.target.value)}
                 />
                 <Button onClick={handlePromoCode} className="w-full">
-                  Активировать
+                  {t[language].activate}
                 </Button>
                 
                 {usedPromoCodes.length > 0 && (
                   <div>
-                    <p className="text-sm font-medium mb-2">Использованные промокоды:</p>
+                    <p className="text-sm font-medium mb-2">{t[language].usedPromos}</p>
                     <div className="space-y-1">
                       {usedPromoCodes.map((code, index) => (
                         <Badge key={index} variant="secondary">{code}</Badge>
@@ -2308,21 +2374,21 @@ const Index = () => {
       <Dialog open={showNicknameInput} onOpenChange={setShowNicknameInput}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>🌐 Вход в мультиплеер</DialogTitle>
+            <DialogTitle>🌐 {t[language].multiplayerLogin}</DialogTitle>
             <DialogDescription>
-              Введите ваш никнейм для игры с другими игроками
+              {t[language].enterNickname}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 mt-4">
             <Input
-              placeholder="Ваш ник..."
+              placeholder={t[language].nicknamePlaceholder}
               value={nicknameInput}
               onChange={(e) => setNicknameInput(e.target.value)}
               onKeyPress={(e) => e.key === 'Enter' && handleNicknameSubmit()}
               autoFocus
             />
             <Button onClick={handleNicknameSubmit} className="w-full bg-blue-500 hover:bg-blue-600">
-              Подключиться 🚀
+              {t[language].connect} 🚀
             </Button>
           </div>
         </DialogContent>
