@@ -2523,7 +2523,7 @@ const Index = () => {
 
             {/* Информация */}
             <div className="bg-gray-100 rounded-lg p-4">
-              <p className="text-sm text-gray-600 flex items-start gap-2">
+              <p className="text-sm flex items-start gap-2 text-gray-100">
                 <Icon name="Info" size={16} className="mt-0.5 flex-shrink-0" />
                 <span>
                   {language === 'ru' 
