@@ -2458,10 +2458,8 @@ const Index = () => {
       <Dialog open={showAuth} onOpenChange={setShowAuth}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>🎯 Авторизация</DialogTitle>
-            <DialogDescription>
-              Войдите, чтобы получить доступ к полному функционалу
-            </DialogDescription>
+            <DialogTitle></DialogTitle>
+            <DialogDescription></DialogDescription>
           </DialogHeader>
           <GoogleAuth 
             user={user} 
