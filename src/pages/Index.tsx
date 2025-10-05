@@ -16,6 +16,14 @@ const Index = () => {
   const [usedPromoCodes, setUsedPromoCodes] = useState<string[]>([]);
   const [playersOnline, setPlayersOnline] = useState(0);
   const [devMode, setDevMode] = useState(false);
+  const [showDevPanel, setShowDevPanel] = useState(false);
+  const [cheats, setCheats] = useState({
+    aimbot: false,
+    infiniteAmmo: false,
+    godMode: false,
+    speedHack: false,
+    wallhack: false
+  });
   
   // Авторизация
   const [user, setUser] = useState<any>(null);
@@ -24,8 +32,44 @@ const Index = () => {
   const [nicknameInput, setNicknameInput] = useState('');
 
   // Состояния игр
-  const [currentGame, setCurrentGame] = useState<'menu' | 'race' | 'pvp' | 'sandbox' | 'multiplayer' | 'login'>('menu');
+  const [currentGame, setCurrentGame] = useState<'menu' | 'race' | 'pvp' | 'sandbox' | 'multiplayer' | 'login' | 'zombie' | 'boss' | 'coins'>('menu');
   const [gameStats, setGameStats] = useState({ hp: 50, timeLeft: 60, score: 0 });
+  
+  // Режим зомби
+  const [zombieData, setZombieData] = useState({
+    playerX: 400,
+    playerY: 300,
+    zombies: [] as Array<{id: number, x: number, y: number, hp: number, speed: number}>,
+    wave: 1,
+    kills: 0,
+    isPlaying: false,
+    gameTime: 0,
+    ammo: 100
+  });
+  
+  // Режим босса
+  const [bossData, setBossData] = useState({
+    playerX: 400,
+    playerY: 300,
+    bossX: 200,
+    bossY: 100,
+    bossHp: 1000,
+    bossMaxHp: 1000,
+    playerHp: 100,
+    isPlaying: false,
+    phase: 1,
+    ammo: 50
+  });
+  
+  // Режим сбора монет
+  const [coinGameData, setCoinGameData] = useState({
+    playerX: 400,
+    playerY: 300,
+    coins: [] as Array<{id: number, x: number, y: number, value: number}>,
+    collected: 0,
+    timeLeft: 60,
+    isPlaying: false
+  });
   
   // Состояния песочницы
   const [sandboxData, setSandboxData] = useState({
@@ -829,7 +873,41 @@ const Index = () => {
     return () => clearInterval(syncInterval);
   }, [currentGame, multiplayerData.isPlaying, multiplayerData.isConnected]);
 
-  const startGame = (gameType: 'race' | 'pvp' | 'sandbox' | 'multiplayer') => {
+  // Логика PvP арены
+  useEffect(() => {
+    if (currentGame !== 'pvp' || !pvpData.isPlaying) return;
+
+    const pvpInterval = setInterval(() => {
+      setPvpData(prev => {
+        // Обновляем таймер
+        const newGameTime = prev.gameTime + 0.1;
+        
+        // Проверка окончания времени (60 секунд)
+        if (newGameTime >= 60 && !cheats.godMode) {
+          setCurrentGame('menu');
+          alert(`⏱️ Время вышло! Убийств: ${prev.kills}`);
+          return prev;
+        }
+        
+        // Двигаем куриц случайно
+        const newChickens = prev.chickens.map(chicken => ({
+          ...chicken,
+          x: Math.max(50, Math.min(window.innerWidth - 100, chicken.x + (Math.random() - 0.5) * chicken.speed * 20)),
+          y: Math.max(50, Math.min(window.innerHeight - 100, chicken.y + (Math.random() - 0.5) * chicken.speed * 20))
+        }));
+        
+        return {
+          ...prev,
+          gameTime: newGameTime,
+          chickens: newChickens
+        };
+      });
+    }, 100);
+
+    return () => clearInterval(pvpInterval);
+  }, [currentGame, pvpData.isPlaying, cheats.godMode]);
+
+  const startGame = (gameType: 'race' | 'pvp' | 'sandbox' | 'multiplayer' | 'zombie' | 'boss' | 'coins') => {
     playSound('click');
     setCurrentGame(gameType);
     setStats(prev => ({ ...prev, gamesPlayed: prev.gamesPlayed + 1 }));
@@ -846,11 +924,12 @@ const Index = () => {
         score: 0
       });
     } else if (gameType === 'pvp') {
-      setPvpData(prev => ({
-        ...prev,
+      setPvpData({
         isPlaying: true,
         kills: 0,
         ammo: 30,
+        gameTime: 0,
+        weapon: 'pistol',
         chickens: Array.from({ length: 5 }, (_, i) => ({
           id: i,
           x: Math.random() * 300 + 50,
@@ -859,7 +938,7 @@ const Index = () => {
           hp: 100,
           maxHp: 100
         }))
-      }));
+      });
     } else if (gameType === 'sandbox') {
       setSandboxData(prev => ({
         ...prev,
@@ -907,6 +986,50 @@ const Index = () => {
           setMultiplayerData(prev => ({ ...prev, isConnected: false }));
           setCurrentGame('menu');
         });
+    } else if (gameType === 'zombie') {
+      setZombieData({
+        playerX: 400,
+        playerY: 300,
+        zombies: Array.from({ length: 3 }, (_, i) => ({
+          id: i,
+          x: Math.random() * 600 + 100,
+          y: Math.random() * 400 + 50,
+          hp: 50,
+          speed: 1
+        })),
+        wave: 1,
+        kills: 0,
+        isPlaying: true,
+        gameTime: 0,
+        ammo: 100
+      });
+    } else if (gameType === 'boss') {
+      setBossData({
+        playerX: 400,
+        playerY: 450,
+        bossX: 300,
+        bossY: 100,
+        bossHp: 1000,
+        bossMaxHp: 1000,
+        playerHp: 100,
+        isPlaying: true,
+        phase: 1,
+        ammo: 50
+      });
+    } else if (gameType === 'coins') {
+      setCoinGameData({
+        playerX: 400,
+        playerY: 300,
+        coins: Array.from({ length: 10 }, (_, i) => ({
+          id: i,
+          x: Math.random() * (window.innerWidth - 100) + 50,
+          y: Math.random() * (window.innerHeight - 100) + 50,
+          value: Math.floor(Math.random() * 3) + 1
+        })),
+        collected: 0,
+        timeLeft: 60,
+        isPlaying: true
+      });
     }
   };
 
@@ -1568,6 +1691,121 @@ const Index = () => {
         </DialogContent>
       </Dialog>
 
+      {/* Чит-панель разработчика */}
+      {devMode && showDevPanel && (
+        <div className="fixed top-20 right-4 bg-gradient-to-br from-purple-900 to-indigo-900 text-white rounded-lg shadow-2xl p-6 z-50 w-80 max-h-[80vh] overflow-y-auto">
+          <div className="flex justify-between items-center mb-4">
+            <h3 className="font-bold text-xl flex items-center gap-2">
+              <span>🐧</span>
+              <span>Чит-панель</span>
+            </h3>
+            <button onClick={() => setShowDevPanel(false)} className="text-2xl hover:text-red-400">×</button>
+          </div>
+          
+          <div className="space-y-4">
+            {/* Читы */}
+            <div className="bg-black/30 rounded-lg p-4">
+              <h4 className="font-bold mb-3">⚙️ Читы</h4>
+              <div className="space-y-2">
+                <label className="flex items-center justify-between cursor-pointer">
+                  <span>🎯 Аим-бот (PvP)</span>
+                  <input 
+                    type="checkbox" 
+                    checked={cheats.aimbot}
+                    onChange={(e) => setCheats(prev => ({ ...prev, aimbot: e.target.checked }))}
+                    className="w-5 h-5"
+                  />
+                </label>
+                <label className="flex items-center justify-between cursor-pointer">
+                  <span>∞ Бесконечные патроны</span>
+                  <input 
+                    type="checkbox" 
+                    checked={cheats.infiniteAmmo}
+                    onChange={(e) => setCheats(prev => ({ ...prev, infiniteAmmo: e.target.checked }))}
+                    className="w-5 h-5"
+                  />
+                </label>
+                <label className="flex items-center justify-between cursor-pointer">
+                  <span>🛡️ Бессмертие</span>
+                  <input 
+                    type="checkbox" 
+                    checked={cheats.godMode}
+                    onChange={(e) => setCheats(prev => ({ ...prev, godMode: e.target.checked }))}
+                    className="w-5 h-5"
+                  />
+                </label>
+                <label className="flex items-center justify-between cursor-pointer">
+                  <span>⚡ Ускорение x2</span>
+                  <input 
+                    type="checkbox" 
+                    checked={cheats.speedHack}
+                    onChange={(e) => setCheats(prev => ({ ...prev, speedHack: e.target.checked }))}
+                    className="w-5 h-5"
+                  />
+                </label>
+              </div>
+            </div>
+
+            {/* Быстрые действия */}
+            <div className="bg-black/30 rounded-lg p-4">
+              <h4 className="font-bold mb-3">⚡ Действия</h4>
+              <div className="space-y-2">
+                <Button 
+                  onClick={() => setCoins(prev => prev + 10000)}
+                  className="w-full bg-yellow-500 hover:bg-yellow-600"
+                  size="sm"
+                >
+                  💰 +10000 монет
+                </Button>
+                <Button 
+                  onClick={() => setAccountData(prev => ({ ...prev, level: prev.level + 10, xp: prev.xp + 1000 }))}
+                  className="w-full bg-blue-500 hover:bg-blue-600"
+                  size="sm"
+                >
+                  ⭐ +10 уровней
+                </Button>
+                <Button 
+                  onClick={() => {
+                    shopItems.filter(item => item.type === 'character').forEach(item => {
+                      if (!inventory.items.includes(item.id)) {
+                        setInventory(prev => ({ ...prev, items: [...prev.items, item.id] }));
+                      }
+                    });
+                    alert('🎉 Все персонажи разблокированы!');
+                  }}
+                  className="w-full bg-green-500 hover:bg-green-600"
+                  size="sm"
+                >
+                  🔓 Разблокировать всё
+                </Button>
+              </div>
+            </div>
+
+            {/* Статистика */}
+            <div className="bg-black/30 rounded-lg p-4 text-xs">
+              <h4 className="font-bold mb-2">📊 Состояние</h4>
+              <div className="space-y-1">
+                <p>Игра: {currentGame}</p>
+                <p>Монеты: {coins}</p>
+                <p>Уровень: {accountData.level}</p>
+                <p>Читы: {Object.values(cheats).filter(Boolean).length}/4</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Кнопка открытия чит-панели */}
+      {devMode && !showDevPanel && (
+        <button
+          onClick={() => setShowDevPanel(true)}
+          className="fixed top-20 right-4 bg-purple-600 hover:bg-purple-700 text-white rounded-full p-3 shadow-lg z-50 transition-transform hover:scale-110"
+          title="Открыть чит-панель"
+        >
+          🐧
+        </button>
+      )}
+
       {/* Main Content */}
       <main className="container mx-auto px-4 py-6 md:py-8">
         {/* Hero Section */}
@@ -1693,6 +1931,52 @@ const Index = () => {
                   size={isMobile ? "sm" : "default"}
                 >
                   {accountData.isLoggedIn ? 'Играть онлайн' : 'Ввести ник'}
+                </Button>
+              </CardContent>
+            </Card>
+
+            {/* Новые режимы */}
+            <Card className="cursor-pointer hover:shadow-lg transition-all duration-300 transform hover:-translate-y-1 border-l-4 border-l-orange-500">
+              <CardContent className="p-4 md:p-6 text-center">
+                <div className="text-4xl md:text-6xl mb-2 md:mb-4">🧟</div>
+                <h3 className="text-lg md:text-xl font-bold mb-2">Зомби волны</h3>
+                <p className="text-sm md:text-base text-gray-600 mb-4">Выживайте против волн зомби!</p>
+                <Button 
+                  onClick={() => startGame('zombie')} 
+                  className="w-full bg-orange-500 hover:bg-orange-600" 
+                  size={isMobile ? "sm" : "default"}
+                >
+                  Начать выживание
+                </Button>
+              </CardContent>
+            </Card>
+
+            <Card className="cursor-pointer hover:shadow-lg transition-all duration-300 transform hover:-translate-y-1 border-l-4 border-l-pink-500">
+              <CardContent className="p-4 md:p-6 text-center">
+                <div className="text-4xl md:text-6xl mb-2 md:mb-4">👹</div>
+                <h3 className="text-lg md:text-xl font-bold mb-2">Битва с боссом</h3>
+                <p className="text-sm md:text-base text-gray-600 mb-4">Победите могущественного босса</p>
+                <Button 
+                  onClick={() => startGame('boss')} 
+                  className="w-full bg-pink-500 hover:bg-pink-600" 
+                  size={isMobile ? "sm" : "default"}
+                >
+                  В бой против босса
+                </Button>
+              </CardContent>
+            </Card>
+
+            <Card className="cursor-pointer hover:shadow-lg transition-all duration-300 transform hover:-translate-y-1 border-l-4 border-l-yellow-500">
+              <CardContent className="p-4 md:p-6 text-center">
+                <div className="text-4xl md:text-6xl mb-2 md:mb-4">💰</div>
+                <h3 className="text-lg md:text-xl font-bold mb-2">Сбор монет</h3>
+                <p className="text-sm md:text-base text-gray-600 mb-4">Соберите максимум монет за время</p>
+                <Button 
+                  onClick={() => startGame('coins')} 
+                  className="w-full bg-yellow-500 hover:bg-yellow-600" 
+                  size={isMobile ? "sm" : "default"}
+                >
+                  Собирать монеты
                 </Button>
               </CardContent>
             </Card>
