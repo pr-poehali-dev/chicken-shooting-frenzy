@@ -105,7 +105,9 @@ const GoogleAuth = ({ onLogin, onLogout, user, gameData }: GoogleAuthProps) => {
             <Icon name="User" size={32} className="text-white" />
           </div>
           <CardTitle className="text-xl font-bold">save progress</CardTitle>
-          <CardDescription>This is not logging into an account, but just saving, this is not authorization.</CardDescription>
+          <CardDescription>
+            Сохраняй прогресс в облаке и играй с любого устройства
+          </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <Button
@@ -119,14 +121,17 @@ const GoogleAuth = ({ onLogin, onLogout, user, gameData }: GoogleAuthProps) => {
                 Подключение...
               </div>
             ) : (
-              <div className="flex items-center gap-2">!!!</div>
+              <div className="flex items-center gap-2">
+                <Icon name="Mail" size={20} />
+                Войти через Google
+              </div>
             )}
           </Button>
           
           <div className="text-xs text-gray-500 text-center space-y-1">
-            <p></p>
-            <p></p>
-            <p></p>
+            <p>✅ Облачное сохранение прогресса</p>
+            <p>✅ Синхронизация между устройствами</p>
+            <p>✅ Безопасность данных</p>
           </div>
         </CardContent>
       </Card>
@@ -172,7 +177,7 @@ const GoogleAuth = ({ onLogin, onLogout, user, gameData }: GoogleAuthProps) => {
           </DialogHeader>
           
           <div className="space-y-4">
-            <div className="rounded-lg p-4 bg-[#000000]">
+            <div className="bg-gray-50 rounded-lg p-4">
               <h4 className="font-bold text-gray-800 mb-2">Информация</h4>
               <div className="space-y-1 text-sm">
                 <p><span className="font-medium">Имя:</span> {user.name}</p>
@@ -206,7 +211,10 @@ const GoogleAuth = ({ onLogin, onLogout, user, gameData }: GoogleAuthProps) => {
               onClick={handleLogout}
               variant="destructive"
               className="w-full"
-            ></Button>
+            >
+              <Icon name="LogOut" size={16} className="mr-2" />
+              Выйти из аккаунта
+            </Button>
           </div>
         </DialogContent>
       </Dialog>
