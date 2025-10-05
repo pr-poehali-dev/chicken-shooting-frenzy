@@ -19,6 +19,8 @@ const Index = () => {
   const [showDevPanel, setShowDevPanel] = useState(false);
   const [language, setLanguage] = useState<'ru' | 'en'>('en');
   const [showSettings, setShowSettings] = useState(false);
+  const [soundEnabled, setSoundEnabled] = useState(true);
+  const [musicEnabled, setMusicEnabled] = useState(true);
   const [cheats, setCheats] = useState({
     aimbot: false,
     infiniteAmmo: false,
