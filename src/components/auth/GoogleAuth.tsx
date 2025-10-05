@@ -206,10 +206,7 @@ const GoogleAuth = ({ onLogin, onLogout, user, gameData }: GoogleAuthProps) => {
               onClick={handleLogout}
               variant="destructive"
               className="w-full"
-            >
-              <Icon name="LogOut" size={16} className="mr-2" />
-              Выйти из аккаунта
-            </Button>
+            ></Button>
           </div>
         </DialogContent>
       </Dialog>
