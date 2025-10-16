@@ -21,6 +21,7 @@ const Index = () => {
   const [showSettings, setShowSettings] = useState(false);
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [musicEnabled, setMusicEnabled] = useState(true);
+  const [darkMode, setDarkMode] = useState(false);
   const [cheats, setCheats] = useState({
     aimbot: false,
     infiniteAmmo: false,
@@ -1146,16 +1147,33 @@ const Index = () => {
 
     const gameInterval = setInterval(() => {
       setBossData(prev => {
-        // Босс двигается случайным образом
-        const newBossX = Math.max(100, Math.min(window.innerWidth - 200, prev.bossX + (Math.random() - 0.5) * 20));
-        const newBossY = Math.max(50, Math.min(300, prev.bossY + (Math.random() - 0.5) * 20));
+        // Босс двигается к игроку (агрессивнее)
+        const dx = prev.playerX - prev.bossX;
+        const dy = prev.playerY - prev.bossY;
+        const dist = Math.hypot(dx, dy);
+        
+        let newBossX = prev.bossX;
+        let newBossY = prev.bossY;
+        
+        if (dist > 100) {
+          // Двигается к игроку
+          newBossX = Math.max(100, Math.min(window.innerWidth - 200, prev.bossX + (dx / dist) * 2));
+          newBossY = Math.max(50, Math.min(window.innerHeight - 150, prev.bossY + (dy / dist) * 2));
+        } else {
+          // Случайное движение вблизи игрока
+          newBossX = Math.max(100, Math.min(window.innerWidth - 200, prev.bossX + (Math.random() - 0.5) * 30));
+          newBossY = Math.max(50, Math.min(window.innerHeight - 150, prev.bossY + (Math.random() - 0.5) * 30));
+        }
 
-        // Босс атакует игрока
+        // Босс атакует игрока (увеличена частота и урон во второй фазе)
         const distToBoss = Math.hypot(prev.bossX - prev.playerX, prev.bossY - prev.playerY);
         let newPlayerHp = prev.playerHp;
+        const attackChance = prev.phase === 2 ? 0.15 : 0.08;
+        const attackDamage = prev.phase === 2 ? 15 : 10;
         
-        if (distToBoss < 150 && Math.random() < 0.1) {
-          newPlayerHp = Math.max(0, prev.playerHp - 10);
+        if (distToBoss < 200 && Math.random() < attackChance) {
+          newPlayerHp = Math.max(0, prev.playerHp - attackDamage);
+          playSound('hit');
         }
 
         // Проверка победы/поражения
@@ -1218,22 +1236,23 @@ const Index = () => {
         }
 
         // Проверяем сбор монет
+        let totalValue = 0;
         const remainingCoins = prev.coins.filter(coin => {
           const dist = Math.hypot(coin.x - newX, coin.y - newY);
           if (dist < 40) {
+            totalValue += coin.value;
+            playSound('coin');
             return false; // Монета собрана
           }
           return true;
         });
 
-        const coinsCollected = prev.coins.length - remainingCoins.length;
-
         return {
           ...prev,
           playerX: newX,
           playerY: newY,
-          coins: remainingCoins,
-          collected: prev.collected + coinsCollected
+          collected: prev.collected + totalValue,
+          coins: remainingCoins
         };
       });
     };
@@ -1397,12 +1416,12 @@ const Index = () => {
       setZombieData({
         playerX: 400,
         playerY: 300,
-        zombies: Array.from({ length: 3 }, (_, i) => ({
+        zombies: Array.from({ length: 5 }, (_, i) => ({
           id: i,
-          x: Math.random() * 600 + 100,
-          y: Math.random() * 400 + 50,
-          hp: 50,
-          speed: 1
+          x: Math.random() * (window.innerWidth - 200) + 100,
+          y: Math.random() * (window.innerHeight - 200) + 100,
+          hp: 30,
+          speed: 1.5
         })),
         wave: 1,
         kills: 0,
@@ -1427,11 +1446,11 @@ const Index = () => {
       setCoinGameData({
         playerX: 400,
         playerY: 300,
-        coins: Array.from({ length: 10 }, (_, i) => ({
+        coins: Array.from({ length: 8 }, (_, i) => ({
           id: i,
-          x: Math.random() * (window.innerWidth - 100) + 50,
-          y: Math.random() * (window.innerHeight - 100) + 50,
-          value: Math.floor(Math.random() * 3) + 1
+          x: Math.random() * (window.innerWidth - 200) + 100,
+          y: Math.random() * (window.innerHeight - 200) + 100,
+          value: Math.random() < 0.2 ? 10 : 1
         })),
         collected: 0,
         timeLeft: 60,
@@ -2347,7 +2366,11 @@ const Index = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-game-orange/20 via-game-yellow/20 to-game-blue/20 font-rubik">
+    <div className={`min-h-screen font-rubik transition-colors duration-300 ${
+      darkMode 
+        ? 'bg-gradient-to-br from-gray-900 via-purple-900 to-black text-white' 
+        : 'bg-gradient-to-br from-game-orange/20 via-game-yellow/20 to-game-blue/20'
+    }`}>
       {renderGame()}
       
       {/* Header */}
@@ -2521,9 +2544,43 @@ const Index = () => {
               </div>
             </div>
 
+            {/* Тема */}
+            <div>
+              <h3 className="font-bold mb-3 flex items-center gap-2">
+                <Icon name="Palette" size={18} />
+                {language === 'ru' ? 'Тема оформления' : 'Theme'}
+              </h3>
+              <div className="grid grid-cols-2 gap-3">
+                <button
+                  onClick={() => setDarkMode(false)}
+                  className={`p-4 rounded-lg border-2 transition-all hover:scale-105 ${
+                    !darkMode 
+                      ? 'border-blue-500 bg-blue-50 shadow-lg' 
+                      : 'border-gray-300 bg-white hover:border-blue-300'
+                  }`}
+                >
+                  <div className="text-3xl mb-2">☀️</div>
+                  <div className="font-bold">{language === 'ru' ? 'Светлая' : 'Light'}</div>
+                  <div className="text-xs text-gray-500">{language === 'ru' ? 'По умолчанию' : 'Default'}</div>
+                </button>
+                <button
+                  onClick={() => setDarkMode(true)}
+                  className={`p-4 rounded-lg border-2 transition-all hover:scale-105 ${
+                    darkMode 
+                      ? 'border-purple-500 bg-purple-50 shadow-lg' 
+                      : 'border-gray-300 bg-white hover:border-purple-300'
+                  }`}
+                >
+                  <div className="text-3xl mb-2">🌙</div>
+                  <div className="font-bold">{language === 'ru' ? 'Тёмная' : 'Dark'}</div>
+                  <div className="text-xs text-gray-500">{language === 'ru' ? 'Для вечера' : 'For evening'}</div>
+                </button>
+              </div>
+            </div>
+
             {/* Информация */}
             <div className="bg-gray-100 rounded-lg p-4">
-              <p className="text-sm flex items-start gap-2 text-gray-100">
+              <p className="text-sm flex items-start gap-2 text-gray-700">
                 <Icon name="Info" size={16} className="mt-0.5 flex-shrink-0" />
                 <span>
                   {language === 'ru' 
